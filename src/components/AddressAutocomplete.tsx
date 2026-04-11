@@ -1,13 +1,17 @@
 "use client";
 
-import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
+import { loadGooglePlacesScript } from "@/lib/load-google-places-script";
 
-const libraries: "places"[] = ["places"];
-
-/** Clarksville / Montgomery County, TN — prioriza sugerencias locales. */
+/** Clarksville / Montgomery County, TN — bias suggestions locally. */
 function clarksvilleAreaBounds(): google.maps.LatLngBounds {
   return new google.maps.LatLngBounds(
     new google.maps.LatLng(36.42, -87.52),
@@ -35,6 +39,14 @@ function MapsConfigError({ detail }: { detail: string }) {
   );
 }
 
+async function resolveMapsApiKey(): Promise<string> {
+  const inline = getPublicGoogleMapsApiKey().trim();
+  if (inline) return inline;
+  const res = await fetch("/api/public/google-maps-key", { cache: "no-store" });
+  const data = (await res.json()) as { key?: string };
+  return (data.key ?? "").trim();
+}
+
 type InnerProps = Props & { apiKey: string };
 
 function GoogleAddressLoader({
@@ -45,57 +57,69 @@ function GoogleAddressLoader({
   showSelectionRequired,
 }: InnerProps) {
   const { t } = useI18n();
-  const [ac, setAc] = useState<google.maps.places.Autocomplete | null>(null);
-  /** Uncontrolled DOM value — controlled `value` breaks Places Autocomplete predictions on re-renders. */
   const inputRef = useRef<HTMLInputElement>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "hydronet-google-maps-script",
-    googleMapsApiKey: apiKey,
-    libraries,
-    version: "weekly",
-    language: "en",
-    region: "US",
-  });
+  const [scriptReady, setScriptReady] = useState(false);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadGooglePlacesScript(apiKey)
+      .then(() => {
+        if (!cancelled) setScriptReady(true);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setLoadError(e instanceof Error ? e : new Error(String(e)));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
 
   useEffect(() => {
     if (loadError) {
-      console.error(
-        "[HydroNet] Google Maps JavaScript API — error al cargar el script.",
-        loadError,
-      );
-      const err = loadError as Error & { message?: string };
-      console.error(
-        "[HydroNet] Posibles causas: API key inválida o sin permisos; restricciones HTTP referrer en Google Cloud; Maps JavaScript API o Places API no habilitadas; facturación.",
-      );
-      if (err?.message) {
-        console.error("[HydroNet] Mensaje:", err.message);
-      }
+      console.error("[HydroNet] Google Maps — error al cargar el script.", loadError);
     }
   }, [loadError]);
 
-  const autocompleteOptions =
-    useMemo((): google.maps.places.AutocompleteOptions => {
-      const base: google.maps.places.AutocompleteOptions = {
-        componentRestrictions: { country: "us" },
-        types: ["address"],
-        strictBounds: false,
-      };
-      if (typeof google !== "undefined" && isLoaded) {
-        base.bounds = clarksvilleAreaBounds();
-      }
-      return base;
-    }, [isLoaded]);
+  const autocompleteOptions = useMemo((): google.maps.places.AutocompleteOptions => {
+    const base: google.maps.places.AutocompleteOptions = {
+      componentRestrictions: { country: "us" },
+      types: ["address"],
+      strictBounds: false,
+    };
+    if (scriptReady && typeof google !== "undefined") {
+      base.bounds = clarksvilleAreaBounds();
+    }
+    return base;
+  }, [scriptReady]);
 
-  const onPlaceChanged = useCallback(() => {
-    if (!ac) return;
-    const place = ac.getPlace();
-    const line = place.formatted_address ?? place.name ?? "";
-    const pid = place.place_id ?? "";
-    onChange(line, pid);
-  }, [ac, onChange]);
+  useLayoutEffect(() => {
+    if (!scriptReady || disabled) return;
+    const input = inputRef.current;
+    if (!input) return;
 
-  // Keep DOM in sync when parent clears the field (form reset); avoid overwriting while typing.
+    const autocomplete = new google.maps.places.Autocomplete(
+      input,
+      autocompleteOptions,
+    );
+    const listener = autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      const line = place.formatted_address ?? place.name ?? "";
+      const pid = place.place_id ?? "";
+      onChangeRef.current(line, pid);
+    });
+
+    return () => {
+      listener.remove();
+      google.maps.event.clearInstanceListeners(autocomplete);
+    };
+  }, [scriptReady, disabled, autocompleteOptions]);
+
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -108,7 +132,7 @@ function GoogleAddressLoader({
     );
   }
 
-  if (!isLoaded) {
+  if (!scriptReady) {
     return (
       <input
         type="text"
@@ -123,24 +147,18 @@ function GoogleAddressLoader({
 
   return (
     <div>
-      <Autocomplete
-        onLoad={setAc}
-        onPlaceChanged={onPlaceChanged}
-        options={autocompleteOptions}
-      >
-        <input
-          ref={inputRef}
-          type="text"
-          required
-          disabled={disabled}
-          autoComplete="street-address"
-          aria-invalid={showSelectionRequired ? true : undefined}
-          className={`input-field ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
-          placeholder={t("addressAutocomplete.inputPlaceholder")}
-          defaultValue={value}
-          onChange={(e) => onChange(e.target.value, "")}
-        />
-      </Autocomplete>
+      <input
+        ref={inputRef}
+        type="text"
+        required
+        disabled={disabled}
+        autoComplete="street-address"
+        aria-invalid={showSelectionRequired ? true : undefined}
+        className={`input-field ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
+        placeholder={t("addressAutocomplete.inputPlaceholder")}
+        defaultValue={value}
+        onChange={(e) => onChangeRef.current(e.target.value, "")}
+      />
       <p className="mt-1 text-xs text-slate-500">
         {t("addressAutocomplete.hintBelow")}
       </p>
@@ -150,16 +168,60 @@ function GoogleAddressLoader({
 
 export function AddressAutocomplete(props: Props) {
   const { t } = useI18n();
-  const apiKey = getPublicGoogleMapsApiKey();
+  const [apiKey, setApiKey] = useState<string | null>(() => {
+    const k = getPublicGoogleMapsApiKey().trim();
+    return k || null;
+  });
+  const [resolved, setResolved] = useState(!!getPublicGoogleMapsApiKey().trim());
+  const [resolveFailed, setResolveFailed] = useState(false);
 
-  if (!apiKey) {
-    if (typeof window !== "undefined") {
+  useEffect(() => {
+    if (apiKey) {
+      setResolved(true);
+      return;
+    }
+    let cancelled = false;
+    resolveMapsApiKey()
+      .then((k) => {
+        if (cancelled) return;
+        if (k) {
+          setApiKey(k);
+          setResolved(true);
+        } else {
+          setResolveFailed(true);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResolveFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && resolveFailed && !apiKey) {
       console.error(
-        "[HydroNet] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY está vacía o no existe.",
-        "Añada en .env: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=tu_clave y reinicie el servidor (next dev).",
+        "[HydroNet] Sin clave de Maps: defina NEXT_PUBLIC_GOOGLE_MAPS_API_KEY o GOOGLE_MAPS_API_KEY en Vercel y redeploy.",
       );
     }
+  }, [resolveFailed, apiKey]);
+
+  if (resolveFailed && !apiKey) {
     return <MapsConfigError detail={t("addressAutocomplete.missingApiKey")} />;
+  }
+
+  if (!resolved || !apiKey) {
+    return (
+      <input
+        type="text"
+        disabled
+        className="input-field"
+        placeholder={t("addressAutocomplete.loadingPlaceholder")}
+        value={props.value}
+        readOnly
+      />
+    );
   }
 
   return <GoogleAddressLoader apiKey={apiKey} {...props} />;

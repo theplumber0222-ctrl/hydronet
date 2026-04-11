@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import type { ServiceType } from "@prisma/client";
 import { useI18n } from "@/contexts/I18nContext";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { useGoogleMapsKeyAvailable } from "@/hooks/useGoogleMapsKeyAvailable";
 import {
   getGoldMemberCheckoutBreakdown,
   getGoldWeekendEmergencyDepositBreakdown,
@@ -18,8 +19,6 @@ import {
   isValidFallbackAddressLine,
   isValidUsPhone,
 } from "@/lib/contact-validation";
-import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
-
 type VisitMode = "preventive" | "extra" | "weekend";
 
 function GoldMemberBookingFormSkeleton() {
@@ -117,7 +116,7 @@ function GoldMemberBookingFormInner() {
       : t("booking.dateMismatchWeekendGold");
   }, [scheduledIsoForPreview, serviceType, t]);
 
-  const hasGoogleMapsKey = !!getPublicGoogleMapsApiKey();
+  const hasGoogleMapsKey = useGoogleMapsKeyAvailable();
   const addressValid = hasGoogleMapsKey
     ? Boolean(placeId?.trim())
     : isValidFallbackAddressLine(addressLine);
