@@ -1,0 +1,23 @@
+import type { ServicioLanguage } from "@/lib/servicio-report-copy";
+
+export type ChecklistStatus = "pass" | "fail" | "na";
+
+export type ServicioReportPayload = {
+  /** Language for PDF and email output (single-language, no mixing). */
+  language: ServicioLanguage;
+  restaurantName: string;
+  clientEmail: string;
+  technicianName: string;
+  serviceDate: string;
+  checklistAirGap: ChecklistStatus;
+  checklistHandSink: ChecklistStatus;
+  checklistGreaseTrap: ChecklistStatus;
+  notes: string;
+  /** Gross amount before $50 deposit credit */
+  invoiceSubtotal: number;
+  depositCredit: number;
+  /** invoiceSubtotal - depositCredit, floored at 0 */
+  amountDue: number;
+  photosBefore: Buffer[];
+  photosAfter: Buffer[];
+};

@@ -21,6 +21,7 @@
 /build
 
 # misc
+_archive_test/
 .DS_Store
 *.pem
 
