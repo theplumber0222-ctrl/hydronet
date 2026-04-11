@@ -69,7 +69,9 @@ function PlacesInputInner({
       })
       .catch((e: unknown) => {
         if (!cancelled) {
-          setLoadError(e instanceof Error ? e : new Error(String(e)));
+          const err = e instanceof Error ? e : new Error(String(e));
+          console.error("[HydroNet Maps] loadGooglePlacesScript:", err.message);
+          setLoadError(err);
         }
       });
     return () => {
