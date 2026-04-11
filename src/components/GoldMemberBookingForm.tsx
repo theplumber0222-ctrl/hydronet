@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { ServiceType } from "@prisma/client";
 import { useI18n } from "@/contexts/I18nContext";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { AddressFieldPlaces } from "@/components/AddressFieldPlaces";
 import { useGoogleMapsKeyAvailable } from "@/hooks/useGoogleMapsKeyAvailable";
 import {
   getGoldMemberCheckoutBreakdown,
@@ -337,7 +337,7 @@ function GoldMemberBookingFormInner() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-lg space-y-5">
+    <form noValidate onSubmit={onSubmit} className="mx-auto max-w-lg space-y-5">
       <p className="rounded-lg border border-orange-700/40 bg-orange-950/20 p-3 text-sm text-slate-300">
         {t("bookGold.intro")}
       </p>
@@ -425,7 +425,7 @@ function GoldMemberBookingFormInner() {
 
       <div>
         <label className="label">{t("booking.address")}</label>
-        <AddressAutocomplete
+        <AddressFieldPlaces
           value={addressLine}
           onChange={setAddress}
           disabled={loading}

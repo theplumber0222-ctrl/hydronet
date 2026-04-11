@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { ServiceType } from "@prisma/client";
 import { useI18n } from "@/contexts/I18nContext";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { AddressFieldPlaces } from "@/components/AddressFieldPlaces";
 import { useGoogleMapsKeyAvailable } from "@/hooks/useGoogleMapsKeyAvailable";
 import {
   getHourlyPlumbingCheckoutBreakdown,
@@ -313,7 +313,7 @@ function BookingFormFields() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-lg space-y-5">
+    <form noValidate onSubmit={onSubmit} className="mx-auto max-w-lg space-y-5">
       <p className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
         <strong className="text-slate-300">HydroNet Plumbing</strong>{" "}
         — {t("booking.brandBlurb")}{" "}
@@ -392,7 +392,7 @@ function BookingFormFields() {
 
       <div>
         <label className="label">{t("booking.address")}</label>
-        <AddressAutocomplete
+        <AddressFieldPlaces
           value={addressLine}
           onChange={setAddress}
           disabled={loading}

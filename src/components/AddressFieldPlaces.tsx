@@ -1,11 +1,14 @@
 "use client";
 
+/**
+ * Dirección con Google Places — input aislado (sin .input-field ni ring de Tailwind).
+ * Places se adjunta una sola vez; validación solo vía props del formulario.
+ */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
 import { loadGooglePlacesScript } from "@/lib/load-google-places-script";
 
-/** Clarksville / Montgomery County, TN — bias suggestions locally. */
 function clarksvilleAreaBounds(): google.maps.LatLngBounds {
   return new google.maps.LatLngBounds(
     new google.maps.LatLng(36.42, -87.52),
@@ -13,30 +16,7 @@ function clarksvilleAreaBounds(): google.maps.LatLngBounds {
   );
 }
 
-type Props = {
-  value: string;
-  onChange: (line: string, placeId: string) => void;
-  disabled?: boolean;
-  /** Red border only when parent says (blur/submit), not while typing. */
-  showSelectionRequired?: boolean;
-  onFocus?: () => void;
-  onBlur?: () => void;
-};
-
-function MapsConfigError({ detail }: { detail: string }) {
-  const { t } = useI18n();
-  return (
-    <div className="rounded-lg border border-red-500/60 bg-red-950/30 px-3 py-2 text-sm text-red-200">
-      <p className="font-medium">{t("addressAutocomplete.mapsUnavailable")}</p>
-      <p className="mt-1 text-xs text-red-200/90">{detail}</p>
-      <p className="mt-2 text-xs text-red-300/80">
-        {t("addressAutocomplete.checkConsole")}
-      </p>
-    </div>
-  );
-}
-
-async function resolveMapsApiKey(): Promise<string> {
+async function fetchMapsKey(): Promise<string> {
   const inline = getPublicGoogleMapsApiKey().trim();
   if (inline) return inline;
   const res = await fetch("/api/public/google-maps-key", { cache: "no-store" });
@@ -44,9 +24,27 @@ async function resolveMapsApiKey(): Promise<string> {
   return (data.key ?? "").trim();
 }
 
-type InnerProps = Props & { apiKey: string };
+export type AddressFieldPlacesProps = {
+  value: string;
+  onChange: (line: string, placeId: string) => void;
+  disabled?: boolean;
+  showSelectionRequired?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+};
 
-function GoogleAddressLoader({
+function MapsError({ detail }: { detail: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-red-500/60 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+      <p className="font-medium">{t("addressAutocomplete.mapsUnavailable")}</p>
+      <p className="mt-1 text-xs text-red-200/90">{detail}</p>
+      <p className="mt-2 text-xs text-red-300/80">{t("addressAutocomplete.checkConsole")}</p>
+    </div>
+  );
+}
+
+function PlacesInputInner({
   apiKey,
   value,
   onChange,
@@ -54,7 +52,7 @@ function GoogleAddressLoader({
   showSelectionRequired,
   onFocus,
   onBlur,
-}: InnerProps) {
+}: AddressFieldPlacesProps & { apiKey: string }) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const onChangeRef = useRef(onChange);
@@ -79,13 +77,6 @@ function GoogleAddressLoader({
     };
   }, [apiKey]);
 
-  useEffect(() => {
-    if (loadError) {
-      console.error("[HydroNet] Google Maps — error al cargar el script.", loadError);
-    }
-  }, [loadError]);
-
-  // Options built inside effect — deps only scriptReady/disabled so Places is not recreated per keystroke (Safari/iPad).
   useLayoutEffect(() => {
     if (!scriptReady || disabled) return;
     const input = inputRef.current;
@@ -119,9 +110,7 @@ function GoogleAddressLoader({
   }, [value]);
 
   if (loadError) {
-    return (
-      <MapsConfigError detail={t("addressAutocomplete.mapsScriptError")} />
-    );
+    return <MapsError detail={t("addressAutocomplete.mapsScriptError")} />;
   }
 
   if (!scriptReady) {
@@ -129,7 +118,7 @@ function GoogleAddressLoader({
       <input
         type="text"
         disabled
-        className="input-field"
+        className="hydronet-address-input hydronet-address-input--loading"
         placeholder={t("addressAutocomplete.loadingPlaceholder")}
         value={value}
         readOnly
@@ -137,21 +126,22 @@ function GoogleAddressLoader({
     );
   }
 
+  const invalid = Boolean(showSelectionRequired);
+
   return (
-    <div className="relative z-0 overflow-visible">
+    <div className="hydronet-address-field-root">
       <input
         ref={inputRef}
         type="text"
-        name="hydronet-address-search"
-        inputMode="text"
-        enterKeyHint="done"
+        id="hydronet-address-input"
+        name="hydronetStreetAddress"
+        className="hydronet-address-input"
+        data-hydronet-invalid={invalid ? "1" : undefined}
+        autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
         disabled={disabled}
-        autoComplete="off"
-        data-address-invalid={showSelectionRequired ? "true" : undefined}
-        className={`input-field input-field-address touch-manipulation ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
         placeholder={t("addressAutocomplete.inputPlaceholder")}
         defaultValue={value}
         onChange={(e) => onChangeRef.current(e.target.value, "")}
@@ -165,7 +155,7 @@ function GoogleAddressLoader({
   );
 }
 
-export function AddressAutocomplete(props: Props) {
+export function AddressFieldPlaces(props: AddressFieldPlacesProps) {
   const { t } = useI18n();
   const [apiKey, setApiKey] = useState<string | null>(() => {
     const k = getPublicGoogleMapsApiKey().trim();
@@ -180,7 +170,7 @@ export function AddressAutocomplete(props: Props) {
       return;
     }
     let cancelled = false;
-    resolveMapsApiKey()
+    fetchMapsKey()
       .then((k) => {
         if (cancelled) return;
         if (k) {
@@ -207,7 +197,7 @@ export function AddressAutocomplete(props: Props) {
   }, [resolveFailed, apiKey]);
 
   if (resolveFailed && !apiKey) {
-    return <MapsConfigError detail={t("addressAutocomplete.missingApiKey")} />;
+    return <MapsError detail={t("addressAutocomplete.missingApiKey")} />;
   }
 
   if (!resolved || !apiKey) {
@@ -215,7 +205,7 @@ export function AddressAutocomplete(props: Props) {
       <input
         type="text"
         disabled
-        className="input-field"
+        className="hydronet-address-input hydronet-address-input--loading"
         placeholder={t("addressAutocomplete.loadingPlaceholder")}
         value={props.value}
         readOnly
@@ -223,5 +213,5 @@ export function AddressAutocomplete(props: Props) {
     );
   }
 
-  return <GoogleAddressLoader apiKey={apiKey} {...props} />;
+  return <PlacesInputInner apiKey={apiKey} {...props} />;
 }
