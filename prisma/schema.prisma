@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String?
+  passwordHash   String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  goldMembership GoldMembership?
+  bookings       Booking[]
+}
+
+model GoldMembership {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  periodStart          DateTime?
+  periodEnd            DateTime?
+  visitsIncluded       Int       @default(3)
+  visitsUsed           Int       @default(0)
+  status               String    @default("active")
+  /** "month" | "year" — Stripe price ID del plan Gold (mensual vs anual) */
+  planInterval         String?
+  /** Inicio del compromiso de servicio (12 meses / primer año). */
+  commitmentStartedAt  DateTime?
+  /** Pagos de suscripción mensual contados (invoice.payment_succeeded). */
+  commitmentMonthsPaid Int       @default(0)
+  /** Suma acumulada (centavos USD) de facturas de suscripción pagadas. */
+  subscriptionTotalPaidCents Int @default(0)
+  /** Factura Stripe de ajuste por salida anticipada (si aplica). */
+  earlyTerminationInvoiceId String? @unique
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Booking {
+  id                    String      @id @default(cuid())
+  userId                String?
+  user                  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  restaurantName        String
+  addressLine           String
+  placeId               String?
+  phone                 String
+  email                 String
+  serviceType           ServiceType
+  scheduledAt           DateTime
+  stripeCheckoutSessionId String?   @unique
+  stripePaymentIntentId String?
+  stripeCustomerId      String?
+  depositAcceptedAt     DateTime?
+  termsVersion          String?
+  status                String      @default("pending")
+  isReschedule          Boolean     @default(false)
+  /** Descripción breve del trabajo (cliente, web). */
+  workDescription       String?     @db.Text
+  /** Persona encargada de pagos / facturación. */
+  billingContactName    String?
+  /** Correo para facturas (puede coincidir con email principal). */
+  invoiceEmail          String?
+  /** Persona de contacto en obra. */
+  siteContactName       String?
+  siteContactPhone      String?
+  /** Tope de gasto en reparación (centavos USD); null = sin tope indicado. */
+  spendLimitCents       Int?
+  /** A quién contactar si el gasto supera el tope (texto libre). */
+  approvalOverLimitNote String?     @db.Text
+  /** Código corto (8 caracteres) para abrir la ficha en tablet con ID de trabajador. */
+  tabletCode            String?     @unique
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+}
+
+enum ServiceType {
+  GOLD_MEMBERSHIP
+  GOLD_SCHEDULED
+  GOLD_EXTRA
+  /** HydroNet Gold Connect — visita estándar (lun–vie), sin membresía */
+  CONNECT_STANDARD
+  EMERGENCY
+  /** Socio Gold — emergencia fin de semana (pago único $950; sin reserva $50) */
+  GOLD_WEEKEND_EMERGENCY
+  /** Instalación por hora ($150/h) — Stripe Price dedicado */
+  HOURLY_PLUMBING
+}
+
+model StripeEvent {
+  id        String   @id
+  createdAt DateTime @default(now())
+}
+
+enum EstimateStatus {
+  DRAFT
+  ACTIVE
+  CONVERTED
+  EXPIRED
+}
+
+/** Estimado creado en tablet/admin — válido ~90 días para convertir a orden autorizada. */
+model Estimate {
+  id             String         @id @default(cuid())
+  restaurantName String
+  email          String
+  phone          String?
+  addressLine    String?
+  lineItems      Json
+  totalCents     Int
+  notes          String?        @db.Text
+  status         EstimateStatus @default(ACTIVE)
+  /** createdAt + 90 días; tras esto el job puede borrar si no está convertido. */
+  expiresAt      DateTime
+  convertedAt    DateTime?
+  workOrder      AuthorizedWorkOrder?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([status])
+}
+
+/** Orden de trabajo autorizada tras convertir un estimado (no es reserva Stripe). */
+model AuthorizedWorkOrder {
+  id             String   @id @default(cuid())
+  estimateId     String   @unique
+  estimate       Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  restaurantName String
+  email          String
+  phone          String?
+  addressLine    String?
+  lineItems      Json
+  totalCents     Int
+  notes          String?  @db.Text
+  workerId       String?
+  authorizedAt   DateTime @default(now())
+  status         String   @default("authorized")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([email])
+}
