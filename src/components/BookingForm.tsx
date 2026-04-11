@@ -71,6 +71,9 @@ function BookingFormFields() {
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
+  const [addressEverBlurred, setAddressEverBlurred] = useState(false);
+  const [addressSubmitAttempted, setAddressSubmitAttempted] = useState(false);
 
   const serviceOptions = useMemo(
     () =>
@@ -138,8 +141,11 @@ function BookingFormFields() {
   const addressValid = hasGoogleMapsKey
     ? Boolean(placeId?.trim())
     : isValidFallbackAddressLine(addressLine);
-  const addressSelectionMissing =
+  const addressNeedsPlaceSelection =
     hasGoogleMapsKey && !!addressLine.trim() && !placeId?.trim();
+  const showAddressPlacesError =
+    addressNeedsPlaceSelection &&
+    (addressSubmitAttempted || (!addressFocused && addressEverBlurred));
 
   const emailValid = isValidEmailFormat(email);
   const phoneValid = isValidUsPhone(phone);
@@ -209,6 +215,7 @@ function BookingFormFields() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setAddressSubmitAttempted(true);
     setError(null);
     if (!terms) {
       setError(t("booking.errTerms"));
@@ -389,7 +396,12 @@ function BookingFormFields() {
           value={addressLine}
           onChange={setAddress}
           disabled={loading}
-          showSelectionRequired={addressSelectionMissing}
+          showSelectionRequired={showAddressPlacesError}
+          onFocus={() => setAddressFocused(true)}
+          onBlur={() => {
+            setAddressFocused(false);
+            setAddressEverBlurred(true);
+          }}
         />
       </div>
 

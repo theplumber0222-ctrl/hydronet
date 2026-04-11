@@ -7,9 +7,10 @@
   body {
     @apply min-h-screen bg-[#111827] text-slate-100 antialiased;
   }
-  /* Google Places suggestions attach to body; ensure they sit above app chrome */
+  /* Google Places: above chrome; iPad/Safari list scrolling */
   .pac-container {
     z-index: 100000 !important;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

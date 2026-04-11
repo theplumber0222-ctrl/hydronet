@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
 import { loadGooglePlacesScript } from "@/lib/load-google-places-script";
@@ -23,7 +17,10 @@ type Props = {
   value: string;
   onChange: (line: string, placeId: string) => void;
   disabled?: boolean;
+  /** Red border only when parent says (blur/submit), not while typing. */
   showSelectionRequired?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 function MapsConfigError({ detail }: { detail: string }) {
@@ -55,6 +52,8 @@ function GoogleAddressLoader({
   onChange,
   disabled,
   showSelectionRequired,
+  onFocus,
+  onBlur,
 }: InnerProps) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -86,27 +85,20 @@ function GoogleAddressLoader({
     }
   }, [loadError]);
 
-  const autocompleteOptions = useMemo((): google.maps.places.AutocompleteOptions => {
-    const base: google.maps.places.AutocompleteOptions = {
-      componentRestrictions: { country: "us" },
-      types: ["address"],
-      strictBounds: false,
-    };
-    if (scriptReady && typeof google !== "undefined") {
-      base.bounds = clarksvilleAreaBounds();
-    }
-    return base;
-  }, [scriptReady]);
-
+  // Options built inside effect — deps only scriptReady/disabled so Places is not recreated per keystroke (Safari/iPad).
   useLayoutEffect(() => {
     if (!scriptReady || disabled) return;
     const input = inputRef.current;
     if (!input) return;
 
-    const autocomplete = new google.maps.places.Autocomplete(
-      input,
-      autocompleteOptions,
-    );
+    const options: google.maps.places.AutocompleteOptions = {
+      componentRestrictions: { country: "us" },
+      types: ["address"],
+      strictBounds: false,
+      bounds: clarksvilleAreaBounds(),
+    };
+
+    const autocomplete = new google.maps.places.Autocomplete(input, options);
     const listener = autocomplete.addListener("place_changed", () => {
       const place = autocomplete.getPlace();
       const line = place.formatted_address ?? place.name ?? "";
@@ -118,7 +110,7 @@ function GoogleAddressLoader({
       listener.remove();
       google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [scriptReady, disabled, autocompleteOptions]);
+  }, [scriptReady, disabled]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -146,18 +138,24 @@ function GoogleAddressLoader({
   }
 
   return (
-    <div>
+    <div className="relative z-0 overflow-visible">
       <input
         ref={inputRef}
         type="text"
+        inputMode="text"
+        enterKeyHint="search"
+        autoCorrect="off"
+        autoCapitalize="words"
         required
         disabled={disabled}
         autoComplete="street-address"
         aria-invalid={showSelectionRequired ? true : undefined}
-        className={`input-field ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
+        className={`input-field touch-manipulation ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
         placeholder={t("addressAutocomplete.inputPlaceholder")}
         defaultValue={value}
         onChange={(e) => onChangeRef.current(e.target.value, "")}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
       <p className="mt-1 text-xs text-slate-500">
         {t("addressAutocomplete.hintBelow")}
