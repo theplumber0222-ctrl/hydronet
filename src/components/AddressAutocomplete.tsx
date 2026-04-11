@@ -1,7 +1,7 @@
 "use client";
 
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/contexts/I18nContext";
 import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
 
@@ -46,12 +46,16 @@ function GoogleAddressLoader({
 }: InnerProps) {
   const { t } = useI18n();
   const [ac, setAc] = useState<google.maps.places.Autocomplete | null>(null);
+  /** Uncontrolled DOM value — controlled `value` breaks Places Autocomplete predictions on re-renders. */
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: "hydronet-google-maps-script",
     googleMapsApiKey: apiKey,
     libraries,
     version: "weekly",
+    language: "en",
+    region: "US",
   });
 
   useEffect(() => {
@@ -91,6 +95,13 @@ function GoogleAddressLoader({
     onChange(line, pid);
   }, [ac, onChange]);
 
+  // Keep DOM in sync when parent clears the field (form reset); avoid overwriting while typing.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (value === "") el.value = "";
+  }, [value]);
+
   if (loadError) {
     return (
       <MapsConfigError detail={t("addressAutocomplete.mapsScriptError")} />
@@ -118,6 +129,7 @@ function GoogleAddressLoader({
         options={autocompleteOptions}
       >
         <input
+          ref={inputRef}
           type="text"
           required
           disabled={disabled}
@@ -125,7 +137,7 @@ function GoogleAddressLoader({
           aria-invalid={showSelectionRequired ? true : undefined}
           className={`input-field ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
           placeholder={t("addressAutocomplete.inputPlaceholder")}
-          value={value}
+          defaultValue={value}
           onChange={(e) => onChange(e.target.value, "")}
         />
       </Autocomplete>
