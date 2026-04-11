@@ -142,15 +142,16 @@ function GoogleAddressLoader({
       <input
         ref={inputRef}
         type="text"
+        name="hydronet-address-search"
         inputMode="text"
-        enterKeyHint="search"
+        enterKeyHint="done"
         autoCorrect="off"
-        autoCapitalize="words"
-        required
+        autoCapitalize="off"
+        spellCheck={false}
         disabled={disabled}
-        autoComplete="street-address"
-        aria-invalid={showSelectionRequired ? true : undefined}
-        className={`input-field touch-manipulation ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
+        autoComplete="off"
+        data-address-invalid={showSelectionRequired ? "true" : undefined}
+        className={`input-field input-field-address touch-manipulation ${showSelectionRequired ? "border-red-500/80 ring-1 ring-red-500/40" : ""}`}
         placeholder={t("addressAutocomplete.inputPlaceholder")}
         defaultValue={value}
         onChange={(e) => onChangeRef.current(e.target.value, "")}

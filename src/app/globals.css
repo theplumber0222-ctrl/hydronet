@@ -12,6 +12,13 @@
     z-index: 100000 !important;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Places añade .pac-target-input; fondos mal repetidos en iOS parecen “iconos” en mosaico */
+  input.pac-target-input,
+  input.pac-input {
+    background-image: none !important;
+    background-repeat: no-repeat !important;
+  }
 }
 
 @layer components {
@@ -26,6 +33,14 @@
   }
   .input-field {
     @apply w-full rounded-lg border border-slate-600 bg-slate-900/40 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500;
+  }
+  /* Dirección + Google Places: sin decoración nativa iOS que compite con el texto (Safari/iPad) */
+  .input-field-address {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: none;
+    background-clip: padding-box;
+    letter-spacing: normal;
   }
   .label {
     @apply block text-sm font-medium text-slate-300;
