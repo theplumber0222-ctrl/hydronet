@@ -21,9 +21,16 @@ const es = {
   },
   stripeUi: {
     checkoutDepositSummary:
-      "No Gold: se requiere depósito de $50 para agendar (se acredita al total); saldo el día del servicio. Gold: suscripción (sin depósito de $50).",
+      "No Gold: Dispatch fee de $195 para agendar (se acredita al total del servicio); saldo el día del servicio. Gold: suscripción (sin Dispatch fee no socio).",
+    flatFeeTitle: "Dispatch fee: $195",
+    dispatchFeePurpose:
+      "Cargo estándar de reserva para quien no es socio Gold: confirma la cita, cubre el traslado y el diagnóstico técnico inicial.",
+    flatFeeBlurb:
+      "Este monto garantiza la seriedad de la reserva e incluye el traslado a su domicilio o negocio en Clarksville, diagnóstico técnico especializado y cualquier reparación menor que no requiera materiales adicionales. Si se requiere una reparación mayor, se le entregará una cotización detallada en el sitio antes de proceder.",
+    hourlyFlatFeeBlurb:
+      "En trabajo por hora, el mismo $195 cubre el despacho y la primera hora de labor o diagnóstico. Cada hora adicional se factura a $150 en sitio según política HydroNet.",
     depositLegal:
-      "Visita única y por hora: depósito de $50; reembolsos según Cancelaciones y reembolsos. Gold: suscripción (sin depósito de $50). Leyes comerciales de Tennessee.",
+      "Reservas no Gold: Dispatch fee $195 en checkout (los socios Gold usan el flujo de reserva de socio). Por hora: la primera hora va en el $195; horas adicionales en sitio. Reembolsos: Cancelaciones y reembolsos. Leyes comerciales de Tennessee.",
     slaNote:
       "Servicios de emergencia fuera de horario estándar están sujetos a disponibilidad y cargos adicionales.",
     commitmentMonthly:
@@ -78,9 +85,9 @@ const es = {
     singleVisitWeekendLabel: "Sábado y domingo",
     singleVisitWeekendPrice: "$1,250",
     singleVisitPolicyNote:
-      "Se requiere reserva de $50 para agendar la cita. El reembolso de los $50 requiere cancelación con al menos 24 horas de anticipación. Gracias por darnos la oportunidad de servirle.",
+      "Se requiere el Dispatch fee de $195 para agendar (no socio). Reembolsos según política de cancelaciones. Gracias por darnos la oportunidad de servirle.",
     ctaBookSingleJetting: "Reservar visita de jetting",
-    planGoldTitle: "HydroNet Plumbing",
+    planGoldTitle: "HydroNet Plumbing Gold Jetting",
     planGoldKicker: "Gold · drenajes comerciales",
     planGoldSubtitle:
       "Este plan incluye tres visitas, una cada cuatro meses de forma regular. Como socio Gold de HydroNet Plumbing podrás adelantar la cita si lo necesitas o agregar una o más citas extra por $733.33 (lun–vie) o $950 (sáb o dom); cada una se cobrará al momento de agendarla. Cancelación con 24 horas de anticipación.",
@@ -90,12 +97,12 @@ const es = {
     goldPerYear: "/ año",
     goldMonthlyAmount: "$183.33",
     goldMonthlyNote: "/ mes · compromiso 12 meses",
-    ctaJoinAnnual: "Unirse — $2,200 / año",
-    ctaJoinMonthly: "Unirse — $183.33 / mes",
+    ctaJoinAnnual: "$2,200 / año — un solo pago",
+    ctaJoinMonthly: "$183.33 / mes",
     hourlyTitle: "HydroNet Plumbing",
     hourlyKicker: "Por hora · instalaciones y reparaciones",
     hourlyIntro:
-      "Se requiere reserva de $50 para agendar la cita; reembolsable si se cancela con al menos 24 horas de anticipación. Este servicio cubre una hora de trabajo por el precio indicado; el total a pagar dependerá del proyecto a realizar y las partes necesarias. Si el proyecto requiere más de cuatro horas se hará una cotización y los $50 para agendar la cita formarán parte del cobro total.",
+      "En Stripe se cobra el Dispatch fee ($195) para agendar; cubre despacho y primera hora. Cada hora adicional es $150 en sitio según política HydroNet. Si el proyecto requiere más de cuatro horas, se hará una cotización antes de proceder.",
     hourlyBullet1:
       "Todo tipo de instalaciones para artículos de plomería.",
     hourlyBullet2: "Reparación de tuberías de agua y drenaje.",
@@ -105,7 +112,7 @@ const es = {
     bestValue: "Mejor valor",
     ctaBookHourly: "Reservar por hora",
     reservationAppliesAll:
-      "Visita única y por hora: reserva $50 (no Gold). Política completa: Cancelaciones y reembolsos.",
+      "Visita única (no Gold): Dispatch fee $195. Por hora: mín. 1 h. Política: Cancelaciones y reembolsos.",
   },
   sticky: {
     ctaBook: "Reservar cita",
@@ -154,6 +161,24 @@ const es = {
       "El pago fue cancelado. Puede volver a intentar cuando desee.",
     loading: "Cargando…",
   },
+  joinGold: {
+    back: "← Inicio",
+    title: "HydroNet Plumbing Gold Jetting",
+    authGateBody:
+      "Para continuar con HydroNet Gold Jetting, identifícate o crea una cuenta. Volverás aquí para completar el pago ($2,200 / año o $183.33 / mes).",
+    ctaRegisterPartner: "Crear cuenta de socio",
+    ctaLoginExisting: "Ya tengo cuenta · Iniciar sesión",
+    subtitle:
+      "Elija anual ($2,200 en un pago) o mensual ($183.33). Complete los datos del negocio para continuar al pago seguro con Stripe.",
+    pickAnnual: "Anual",
+    pickMonthly: "Mensual",
+    onePayment: "Un solo pago",
+    ctaPayAnnual: "Continuar para pagar $2,200 / año",
+    ctaPayMonthly: "Continuar — $183.33 / mes",
+    errTerms: "Debe aceptar los términos.",
+    errCommitment:
+      "Acepte el compromiso de 12 meses para continuar con el plan mensual.",
+  },
   bookGold: {
     backDashboard: "← Panel Gold",
     kicker: "HydroNet Plumbing · visitas Gold",
@@ -161,7 +186,7 @@ const es = {
     subtitle:
       "Programe el mantenimiento preventivo de drenajes comerciales o compre una visita adicional de socio a $733.33.",
     intro:
-      "Tres visitas incluidas al año (~cada cuatro meses); puede reservar antes si lo necesita. Extras y emergencias de fin de semana se pagan en su totalidad al agendar. Las visitas Gold no usan la reserva de $50.",
+      "Tres visitas incluidas al año (~cada cuatro meses); puede reservar antes si lo necesita. Extras y emergencias de fin de semana se pagan en su totalidad al agendar. Las visitas Gold no usan el Dispatch fee no socio ($195).",
     visitsSummary:
       "Visitas incluidas usadas en este ciclo: {used} de {included}.",
     visitTypeLabel: "Tipo de visita",
@@ -185,7 +210,7 @@ const es = {
     weekendPayNote:
       "Cargo íntegro en Stripe al agendar.",
     memberNoDepositLegal:
-      "Las visitas de socio Gold no usan la reserva de $50.",
+      "Las visitas de socio Gold no usan el Dispatch fee no socio ($195).",
     termsLead:
       "Importes y políticas en el momento del pago.",
     submitIncluded: "Confirmar visita incluida",
@@ -203,10 +228,15 @@ const es = {
     brandBlurb: "cumplimiento del International Plumbing Code (IPC 2018).",
     billingMode: "Modalidad de cobro",
     standardAppt: "Visita única ($950 / $1,250)",
-    hourlyRate: "Por hora ($150)",
+    hourlyRate: "Por hora ($150/h tras 1.ª)",
     serviceLabel: "Tipo de servicio",
     hourlyBox:
-      "Servicios técnicos especializados bajo código IPC 2018. Pago mínimo: 1 hora en Stripe ($150); tiempo adicional según trabajo en sitio.",
+      "Servicios técnicos bajo IPC 2018. Paga el Dispatch fee $195 para confirmar la visita; cubre despacho y primera hora. Las horas siguientes se facturan a $150 en sitio.",
+    goldMemberBanner:
+      "Detectamos una membresía Gold activa en esta cuenta. Use la reserva de socio: el Dispatch fee de $195 no aplica en visitas elegibles.",
+    goldMemberBannerCta: "Ir a reserva de socio",
+    dispatchNoShowPolicy:
+      "El Dispatch fee de $195 no es reembolsable si la cancelación ocurre al momento de la llegada del técnico al sitio.",
     businessName: "Nombre de casa o negocio",
     address: "Dirección",
     phone: "Teléfono",
@@ -223,8 +253,10 @@ const es = {
       "Hora Tennessee — la tarifa sigue el día que elija (resumen abajo).",
     chargeSummary: "Resumen de cobro (estimado en Stripe)",
     serviceLine: "Servicio:",
-    hourlyRateLine: "Tarifa:",
-    hourlyMin: "/ hora o fracción (mínimo 1 hora en esta reserva).",
+    hourlyRateLine: "Despacho + 1.ª hora (hoy):",
+    hourlyMin: "",
+    hourlyAdditionalAfterFirst:
+      "Mano de obra después de la primera hora: $150/hora en sitio (según política HydroNet).",
     chargeToday: "Total a cobrar hoy en Stripe: $",
     ipcNote: "IPC 2018 — mano de obra profesional HydroNet LLC.",
     standardTotal: "Total del servicio:",
@@ -232,17 +264,19 @@ const es = {
     standardOffHours: "fuera de horario estándar",
     rateBandWeekday: "Lun–vie · total $950",
     rateBandWeekend: "Sáb–dom · total $1,250",
-    reserveToday: "Reserva hoy:",
+    reserveToday: "Dispatch fee hoy:",
     balanceDue: "Saldo pendiente:",
     depositNoteStandard:
-      "Se requiere depósito de $50 para agendar. Cancelación con al menos 24 horas de anticipación. Reembolsos: Cancelaciones y reembolsos.",
+      "Dispatch fee: $195. Cancelación con al menos 24 horas de anticipación, salvo lo indicado abajo. Reembolsos: Cancelaciones y reembolsos.",
     hourlyLegal:
-      "Reserva $50; mínimo 1 hora en Stripe. Tiempo adicional según política HydroNet. Reembolsos: Cancelaciones y reembolsos.",
+      "Dispatch fee ($195) cubre despacho y primera hora; horas adicionales $150 en sitio. Reembolsos: Cancelaciones y reembolsos.",
     termsCheckbox:
       "Acepto la tarifa de reserva y la logística indicadas arriba, los Términos de servicio y la política de cancelaciones y reembolsos, así como las condiciones del servicio seleccionado. La cancelación requiere al menos 24 horas de anticipación.",
     termsLink: "Términos de servicio",
     refundsLink: "política de cancelaciones y reembolsos",
     submitPay: "Reserva segura con Stripe",
+    submitPayServiceFee: "Pagar Dispatch fee ($195)",
+    submitPayHourly: "Continuar al pago (mín. 1 hora)",
     submitting: "Redirigiendo a pago seguro…",
     errTerms:
       "Debe aceptar los términos, la política de cancelaciones y las condiciones indicadas.",
@@ -276,7 +310,7 @@ const es = {
     services: {
       drainage: {
         label: "Jetting / limpieza de drenajes",
-        hint: "Limpieza de líneas de drenaje con equipo de presión; ámbito comercial y residencial.",
+        hint: "Hidrolavado de alta presión en líneas de drenaje (comercial y residencial). Los $195 del Dispatch fee aseguran la visita y el despliegue del equipo; se acreditan al total del servicio ($950 lun–vie o $1,250 sáb–dom).",
       },
       water_heater: {
         label:
@@ -441,6 +475,8 @@ const es = {
   register: {
     title: "Crear cuenta",
     subtitle: "Regístrese antes de contratar el plan Gold anual.",
+    subtitleGold:
+      "Cree su cuenta para continuar al pago de HydroNet Gold Jetting.",
     name: "Nombre (opcional)",
     email: "Correo",
     password: "Contraseña (mín. 8 caracteres)",
@@ -528,6 +564,10 @@ const es = {
     unauthorized: "No autorizado",
     emailExists: "Ya existe una cuenta con este correo.",
     registerFail: "Error al registrar",
+    registerInvalid:
+      "Datos no válidos: use un correo válido y una contraseña de al menos 8 caracteres.",
+    registerDbUnavailable:
+      "No se pudo conectar a la base de datos. Si el problema continúa, contacte al administrador.",
     membershipCancelNone: "No hay suscripción activa para cancelar.",
     reschedule: {
       notFound: "Reserva no encontrada.",
@@ -543,6 +583,8 @@ const es = {
       dateRequired: "Fecha requerida.",
       membershipNotFound: "Membresía no encontrada.",
       unsupportedService: "Tipo de servicio no soportado.",
+      goldUseMemberBooking:
+        "Membresía Gold activa: use la página de reserva de socio para que no se cobre el Dispatch fee de $195 en visitas elegibles.",
       commitmentRequired:
         "Debe aceptar el compromiso de 12 meses y las condiciones de cancelación anticipada.",
       goldBillingRequired: "Seleccione plan mensual o anual Gold.",
@@ -556,8 +598,12 @@ const es = {
     goldWeekendSubmit:
       "Emergencia fin de semana Gold — pago íntegro al pagar.",
     hourlySubmit: "Mínimo 1 hora ($150) al pagar.",
+    hourlyFlatFeeSubmit:
+      "Dispatch fee — $195 hoy (despacho + primera hora). Horas adicionales $150/h en sitio.",
+    flatFeeSubmit:
+      "Dispatch fee — $195 hoy. Saldo según servicio el día de la visita.",
     emergencyNonMemberSubmit:
-      "Reserva $50 hoy; saldo el día del servicio.",
+      "Dispatch fee $195 hoy; saldo el día del servicio.",
   },
   legal: legalEs,
 } satisfies Messages;

@@ -132,7 +132,7 @@ export async function sendMembershipConfirmation(params: {
         <h1 style="color:#0EA5E9;margin:0 0 16px;font-size:1.25rem;">Membresía activa</h1>
         <p style="margin:0 0 12px;">Su plan <strong>HydroNet Gold</strong> está confirmado. Incluye 3 visitas de mantenimiento preventivo (lunes a viernes) por ciclo anual.</p>
         <p style="margin:0 0 12px;">Próxima renovación estimada: <strong>${escapeHtml(end)}</strong> (zona horaria Tennessee).</p>
-        <p style="margin:16px 0 0;font-size:14px;color:#9ca3af;">La membresía se factura solo como su plan de suscripción; no aplica la tarifa de reserva de $50 de las citas sueltas.</p>
+        <p style="margin:16px 0 0;font-size:14px;color:#9ca3af;">La membresía se factura solo como su plan de suscripción; no aplica el Dispatch fee de $195 de las citas sueltas (no Gold).</p>
         <p style="margin:16px 0 0;font-size:14px;">HydroNet Plumbing · <a href="mailto:${CONTACT}" style="color:#0EA5E9;">${CONTACT}</a></p>
       </div>
     `,

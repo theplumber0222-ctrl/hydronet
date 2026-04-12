@@ -8,6 +8,7 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
+import { CONNECT_DEPOSIT_USD } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -116,7 +117,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: after.error }, { status: 400 });
   }
 
-  const depositCredit = 50;
+  const depositCredit = CONNECT_DEPOSIT_USD;
   const amountDue = Math.max(
     0,
     Math.round((parsed.invoiceSubtotal - depositCredit) * 100) / 100,

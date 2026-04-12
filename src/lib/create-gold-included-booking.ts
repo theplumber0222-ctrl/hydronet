@@ -5,7 +5,7 @@ import { serviceTypeToLabel, serviceTypeToN8n } from "@/lib/service-labels";
 import { allocateUniqueTabletCode } from "@/lib/allocate-tablet-code";
 
 /**
- * Visita preventiva incluida en membresía Gold — sin cargo de reserva $50 ni Checkout Stripe.
+ * Visita preventiva incluida en membresía Gold — sin tarifa plana no socio ($195) ni Checkout Stripe.
  */
 export async function createGoldIncludedPreventiveBooking(params: {
   userId: string;

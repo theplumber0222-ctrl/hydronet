@@ -24,7 +24,7 @@ export const legalEs = {
       "Las reservas se realizan a través del formulario en este sitio; el pago inicial puede procesarse mediante Stripe Checkout. Debe proporcionar datos de contacto veraces y, cuando el sistema lo exija, seleccionar la dirección entre las sugerencias de Google Places para validar ubicación.",
     s4P2:
       "Las citas preventivas Gold incluidas en membresía se programan en días hábiles (lun–vie) según las reglas publicadas en el sitio.",
-    s5Title: "5. Tarifa de reserva y logística (depósito)",
+    s5Title: "5. Dispatch fee y programación",
     s6Title: "6. Membresía HydroNet Gold",
     s6P1:
       "Los planes Gold (mensual o anual) incluyen beneficios publicados en la página de inicio (p. ej. prioridad en cola, visitas preventivas por ciclo en días hábiles). El plan mensual incluye condiciones de compromiso y posibles cargos por salida anticipada, según se indica al contratar y en el panel de cuenta.",
@@ -128,13 +128,15 @@ export const legalEs = {
       "Esta página resume las reglas de depósito, cancelación y ajustes asociados a ",
     p1Part2: "El detalle contractual también está en los ",
     p1Part3: ".",
-    s1Title: "1. Tarifa de reserva y depósito ($50)",
+    s1Title: "1. Dispatch fee y programación (no Gold)",
     s1NonGoldScheduling:
-      "Para reservas que no forman parte de una membresía Gold de HydroNet Plumbing (por ejemplo visita única de jetting o trabajo por hora cuando aplique la reserva de $50): las cancelaciones deben solicitarse con al menos 24 horas de anticipación a la hora programada del servicio, para poder ajustar la agenda y evaluar reembolso o acreditación del depósito según corresponda. Los importes o ajustes se determinarán según los servicios efectivamente prestados y lo registrado en Stripe. Estas reglas de agenda y depósito no aplican a la facturación por suscripción ni a las visitas preventivas incluidas en una membresía Gold con HydroNet Plumbing.",
+      "Para reservas que no forman parte de una membresía Gold de HydroNet Plumbing (por ejemplo visita única de jetting con Dispatch fee de $195, o trabajo por hora con cargo mínimo en checkout): las cancelaciones deben solicitarse con al menos 24 horas de anticipación a la hora programada del servicio, para poder ajustar la agenda y evaluar reembolso o acreditación según política. Los importes o ajustes se determinarán según los servicios efectivamente prestados y lo registrado en Stripe. Estas reglas de agenda y tarifas no aplican a la facturación por suscripción ni a las visitas preventivas incluidas en una membresía Gold con HydroNet Plumbing.",
+    s1NoShow:
+      "El Dispatch fee de $195 no es reembolsable si la cancelación ocurre al momento de la llegada del técnico al sitio.",
     s2Title: "2. Servicio por hora",
     s2P1Prefix:
-      "El servicio por hora se factura con un mínimo de una hora en la pasarela de pago cuando así esté configurado; el tiempo adicional puede facturarse según lo acordado en sitio. Consulte el formulario de reserva para el importe vigente (referencia:",
-    s2P1Suffix: "USD/hora o fracción, salvo cambio publicado).",
+      "Reservas por hora: el Dispatch fee ($195) cubre despacho y primera hora. Las horas adicionales se facturan en sitio a ",
+    s2P1Suffix: "USD/hora o fracción (salvo cambio publicado).",
     s3Title: "3. Membresía HydroNet Gold",
     s3P2:
       "Una membresía Gold de HydroNet Plumbing se factura como suscripción. La cancelación de la suscripción puede gestionarse desde el panel de cliente cuando esté disponible. Los cargos por salida anticipada o ajustes, si aplican, siguen el compromiso indicado al contratar y lo registrado en Stripe, y son independientes de la regla de 24 horas para reservas que no son membresía (sección 1).",

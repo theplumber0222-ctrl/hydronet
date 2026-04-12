@@ -150,7 +150,7 @@ export async function GoldPricingTable() {
 
             <div className="mt-auto flex flex-col gap-3">
               <Link
-                href="/book?gold=annual"
+                href="/join/gold?billing=annual"
                 className={planCtaClassName(
                   "btn-primary shadow-xl shadow-orange-900/35 ring-2 ring-orange-400/30",
                 )}
@@ -158,7 +158,7 @@ export async function GoldPricingTable() {
                 {t(d, "pricing.ctaJoinAnnual")}
               </Link>
               <Link
-                href="/book?gold=monthly"
+                href="/join/gold?billing=monthly"
                 className={planCtaClassName(
                   "btn-secondary border-orange-500/40 text-slate-100 shadow-orange-900/20 ring-1 ring-orange-500/25 hover:bg-slate-800/80",
                 )}

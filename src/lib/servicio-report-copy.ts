@@ -122,8 +122,8 @@ const EN: Block = {
   notesHelp: "Optional details for the report",
   billingTitle: "Billing",
   subtotalLabel: "Work subtotal (USD)",
-  subtotalHelp: "Before $50 deposit credit",
-  depositRow: "Deposit credit ($50)",
+  subtotalHelp: "Before $195 Dispatch fee credit",
+  depositRow: "Dispatch fee credit ($195)",
   totalRow: "Amount due",
   totalRowHelp: "After deposit credit",
   invoicePreviewTitle: "PDF header preview",
@@ -134,7 +134,7 @@ const EN: Block = {
   networkError: "Network or server error.",
   removePhotoAria: "Remove photo",
   depositLegal:
-    "This $50 reservation fee applies to scheduled on-site visits and hourly work. It is non-refundable unless you cancel at least 24 hours in advance. It is credited toward your service total. Subject to Tennessee commercial laws.",
+    "The $195 Dispatch fee for non-Gold visits is credited toward your service total. Hourly jobs use a minimum 1-hour charge at checkout. Subject to Tennessee commercial laws and our cancellation policy.",
   pdfTitle: "On-Site Service Report",
   pdfEstablishment: "Establishment",
   pdfTechnician: "Technician",
@@ -142,7 +142,7 @@ const EN: Block = {
   pdfChecklistTitle: "Internal inspection checklist",
   pdfBillingTitle: "Billing summary",
   pdfSubtotalLine: "Work subtotal:",
-  pdfDepositLine: "Deposit credit ($50):",
+  pdfDepositLine: "Dispatch fee credit ($195):",
   pdfTotalLine: "Amount due:",
   pdfNotes: "Notes",
   pdfPhotosBefore: "Photos — Before",
@@ -152,7 +152,7 @@ const EN: Block = {
   emailIntro:
     "Please find attached the professional PDF report for your on-site service, including the inspection checklist and photos.",
   emailRowSubtotal: "Subtotal",
-  emailRowDeposit: "Deposit credit ($50)",
+  emailRowDeposit: "Dispatch fee credit ($195)",
   emailRowTotal: "Amount due",
   emailFooter: "HydroNet Plumbing",
   apiUnauthorized: "Unauthorized",
@@ -199,8 +199,8 @@ const ES: Block = {
   notesHelp: "Detalle opcional para el informe",
   billingTitle: "Cobro",
   subtotalLabel: "Subtotal del trabajo (USD)",
-  subtotalHelp: "Antes del crédito de reserva de $50",
-  depositRow: "Crédito reserva ($50)",
+  subtotalHelp: "Antes del crédito de Dispatch fee ($195)",
+  depositRow: "Crédito Dispatch fee ($195)",
   totalRow: "Total a cobrar",
   totalRowHelp: "Tras crédito de reserva",
   invoicePreviewTitle: "Vista previa del encabezado del PDF",
@@ -211,7 +211,7 @@ const ES: Block = {
   networkError: "Error de red o del servidor.",
   removePhotoAria: "Quitar foto",
   depositLegal:
-    "Esta reserva de $50 aplica a visitas en sitio y trabajo por hora. No es reembolsable salvo cancelación con al menos 24 horas de anticipación; se acredita al total del servicio. Sujeto a leyes comerciales de Tennessee.",
+    "El Dispatch fee de $195 en visitas no Gold se acredita al total del servicio. Trabajo por hora: mínimo 1 hora en checkout. Sujeto a leyes comerciales de Tennessee y la política de cancelación.",
   pdfTitle: "Reporte de servicio en sitio",
   pdfEstablishment: "Establecimiento",
   pdfTechnician: "Técnico",
@@ -219,7 +219,7 @@ const ES: Block = {
   pdfChecklistTitle: "Lista de verificación interna",
   pdfBillingTitle: "Resumen de cobro",
   pdfSubtotalLine: "Subtotal del trabajo:",
-  pdfDepositLine: "Crédito reserva ($50):",
+  pdfDepositLine: "Crédito Dispatch fee ($195):",
   pdfTotalLine: "Total a cobrar:",
   pdfNotes: "Notas",
   pdfPhotosBefore: "Fotografías — Antes",
@@ -229,7 +229,7 @@ const ES: Block = {
   emailIntro:
     "Adjunto encontrará el informe profesional en PDF del servicio en sitio, con la lista de verificación y las fotografías.",
   emailRowSubtotal: "Subtotal",
-  emailRowDeposit: "Crédito reserva ($50)",
+  emailRowDeposit: "Crédito Dispatch fee ($195)",
   emailRowTotal: "Total a cobrar",
   emailFooter: "HydroNet Plumbing",
   apiUnauthorized: "No autorizado",
@@ -250,9 +250,9 @@ export function buildServicioSuccessMessage(
   amountDue: string,
 ): string {
   if (lang === "en") {
-    return `Done. PDF sent to ${clientEmail}. Amount due: $${amountDue} USD (including the $50 deposit credit).`;
+    return `Done. PDF sent to ${clientEmail}. Amount due: $${amountDue} USD (including the $195 Dispatch fee credit).`;
   }
-  return `Listo. PDF enviado a ${clientEmail}. Total a cobrar: $${amountDue} USD (crédito $50 aplicado).`;
+  return `Listo. PDF enviado a ${clientEmail}. Total a cobrar: $${amountDue} USD (crédito Dispatch fee $195 aplicado).`;
 }
 
 function statusWord(

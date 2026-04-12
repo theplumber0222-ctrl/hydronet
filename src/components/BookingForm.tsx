@@ -74,6 +74,18 @@ function BookingFormFields() {
   const [addressFocused, setAddressFocused] = useState(false);
   const [addressEverBlurred, setAddressEverBlurred] = useState(false);
   const [addressSubmitAttempted, setAddressSubmitAttempted] = useState(false);
+  /** Socio Gold activo: este formulario público no debe cobrar el Dispatch fee — usar /book/gold */
+  const [activeGoldBlocksPublicBook, setActiveGoldBlocksPublicBook] =
+    useState(false);
+
+  useEffect(() => {
+    fetch("/api/membership/summary")
+      .then((r) => r.json())
+      .then((d: { gold?: { active?: boolean } | null }) => {
+        setActiveGoldBlocksPublicBook(d.gold?.active === true);
+      })
+      .catch(() => {});
+  }, []);
 
   const serviceOptions = useMemo(
     () =>
@@ -179,7 +191,8 @@ function BookingFormFields() {
     contactFieldsOk &&
     verificationOk &&
     !dateMismatchMessage &&
-    !!scheduledAt;
+    !!scheduledAt &&
+    !activeGoldBlocksPublicBook;
 
   const pricePreview = useMemo(() => {
     if (!scheduledIsoForPreview || dateMismatchMessage) return null;
@@ -322,6 +335,18 @@ function BookingFormFields() {
         </abbr>
         . {t("stripeUi.slaNote")}
       </p>
+
+      {activeGoldBlocksPublicBook && (
+        <div className="rounded-lg border border-amber-600/50 bg-amber-950/35 p-4 text-sm leading-relaxed text-amber-100/95">
+          <p>{t("booking.goldMemberBanner")}</p>
+          <Link
+            href="/book/gold"
+            className="mt-2 inline-block font-semibold text-sky-300 underline decoration-sky-500/60 underline-offset-2 hover:text-sky-200"
+          >
+            {t("booking.goldMemberBannerCta")}
+          </Link>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -585,8 +610,7 @@ function BookingFormFields() {
                 {t("booking.hourlyRateLine")}{" "}
                 <strong className="text-white">
                   ${pricePreview.serviceTotalUsd.toFixed(2)}
-                </strong>{" "}
-                {t("booking.hourlyMin")}
+                </strong>
               </p>
               <p className="font-semibold text-sky-200">
                 {t("booking.chargeToday")}
@@ -622,38 +646,46 @@ function BookingFormFields() {
                 {t("booking.chargeToday")}
                 {pricePreview.totalChargeUsd.toFixed(2)}
               </p>
-              <p className="text-xs text-slate-500">
-                {t("stripeUi.checkoutDepositSummary")}
-              </p>
             </div>
           )}
         </div>
       )}
 
       <div className="rounded-lg border border-slate-600 bg-slate-800/50 p-4">
-        {billingMode === "hourly" ? (
-          <>
-            <p className="text-sm font-medium text-orange-300/95">
-              {t("booking.hourlyLegal")}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              {t("stripeUi.depositLegal")}
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-sky-400">
-              {t("stripeUi.checkoutDepositSummary")}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-300">
-              {t("booking.depositNoteStandard")}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              {t("stripeUi.depositLegal")}
-            </p>
-          </>
-        )}
-        <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-300">
+        <div
+          className={`space-y-2 text-xs leading-relaxed ${
+            billingMode === "hourly"
+              ? "border-b border-orange-800/30 pb-4 text-slate-400"
+              : "border-b border-slate-600/80 pb-4 text-slate-400"
+          }`}
+        >
+          <p
+            className={`text-sm font-semibold ${
+              billingMode === "hourly"
+                ? "text-orange-200/95"
+                : "text-sky-300"
+            }`}
+          >
+            {t("stripeUi.flatFeeTitle")}
+          </p>
+          <p>{t("stripeUi.dispatchFeePurpose")}</p>
+          {billingMode === "hourly" ? (
+            <>
+              <p>{t("stripeUi.hourlyFlatFeeBlurb")}</p>
+              <p className="text-slate-500">{t("booking.hourlyAdditionalAfterFirst")}</p>
+            </>
+          ) : (
+            <p>{t("stripeUi.flatFeeBlurb")}</p>
+          )}
+          <p className="text-slate-500">{t("stripeUi.depositLegal")}</p>
+          {billingMode === "standard" && (
+            <p>{t("booking.depositNoteStandard")}</p>
+          )}
+          <p className="font-medium text-amber-200/95">
+            {t("booking.dispatchNoShowPolicy")}
+          </p>
+        </div>
+        <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-slate-300">
           <input
             type="checkbox"
             checked={terms}
@@ -663,7 +695,8 @@ function BookingFormFields() {
           <span>
             {locale === "es" ? (
               <>
-                Acepto la tarifa de reserva y la logística indicadas arriba, los{" "}
+                Acepto el Dispatch fee ($195) y la logística indicadas arriba,
+                los{" "}
                 <Link href="/terms" className="link-sky font-medium">
                   Términos de servicio
                 </Link>{" "}
@@ -676,7 +709,8 @@ function BookingFormFields() {
               </>
             ) : (
               <>
-                I accept the reservation fee and logistics described above, the{" "}
+                I accept the Dispatch fee ($195) and logistics described above,
+                the{" "}
                 <Link href="/terms" className="link-sky font-medium">
                   Terms of Service
                 </Link>
@@ -703,7 +737,7 @@ function BookingFormFields() {
         disabled={loading || !canProceedToPayment}
         className="btn-primary w-full disabled:opacity-50"
       >
-        {loading ? t("booking.submitting") : t("booking.submitPay")}
+        {loading ? t("booking.submitting") : t("booking.submitPayServiceFee")}
       </button>
     </form>
   );

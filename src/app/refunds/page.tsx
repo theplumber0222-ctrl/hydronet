@@ -34,6 +34,9 @@ export default async function RefundsPage() {
       <p className="legal-quote">{t(d, "stripeUi.checkoutDepositSummary")}</p>
       <p className="legal-quote mt-4">{t(d, "stripeUi.depositLegal")}</p>
       <p className="mt-4">{t(d, "legal.refunds.s1NonGoldScheduling")}</p>
+      <p className="mt-4 text-sm text-amber-100/90">
+        {t(d, "legal.refunds.s1NoShow")}
+      </p>
 
       <h2>{t(d, "legal.refunds.s2Title")}</h2>
       <p>

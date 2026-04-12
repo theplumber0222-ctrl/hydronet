@@ -8,6 +8,7 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
+import { CONNECT_DEPOSIT_USD } from "@/lib/stripe";
 
 type ChecklistKey = "airGap" | "handSink" | "greaseTrap";
 
@@ -65,7 +66,7 @@ export function ServicioEnSitioForm() {
   }, []);
 
   const subtotalNum = parseFloat(invoiceSubtotal.replace(",", ".")) || 0;
-  const deposit = 50;
+  const deposit = CONNECT_DEPOSIT_USD;
   const amountDue = Math.max(0, Math.round((subtotalNum - deposit) * 100) / 100);
 
   const persistAdminKey = useCallback(() => {
@@ -438,7 +439,9 @@ export function ServicioEnSitioForm() {
         <div className="mt-4 space-y-2 rounded-xl bg-slate-800/80 p-4 text-lg">
           <div className="flex flex-wrap items-center justify-between gap-2 text-slate-300">
             <span>{c.depositRow}</span>
-            <span className="font-mono text-sky-400">-$50.00</span>
+            <span className="font-mono text-sky-400">
+              -${deposit.toFixed(2)}
+            </span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-600 pt-3 text-xl font-bold text-white">
             <span>{c.totalRow}</span>

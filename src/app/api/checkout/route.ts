@@ -7,13 +7,13 @@ import { prisma } from "@/lib/prisma";
 import { assertDateAllowedForService } from "@/lib/calendar-rules";
 import {
   connectDepositMetadata,
+  hourlyDispatchMetadata,
   getPublicEmergencyServicePriceId,
   getGoldAdditionalPriceId,
   getGoldAnnualPriceId,
   getGoldMemberWeekendPriceId,
   getGoldMonthlyPriceId,
   getReservationPriceId,
-  getHourlyPlumbingPriceId,
   getStripe,
   isStripeSecretKeyFailure,
   goldWeekendEmergencyFullMetadata,
@@ -71,7 +71,7 @@ function createCheckoutBodySchema(dict: Messages) {
       commitmentTermsAccepted: z.literal(true).optional(),
       locale: z.enum(["en", "es"]).optional(),
       /** Tras cancelar en Stripe: volver a /book o al flujo de socio Gold. */
-      cancelReturn: z.enum(["book", "bookGold"]).optional(),
+      cancelReturn: z.enum(["book", "bookGold", "joinGold"]).optional(),
       /** Verificación cliente (citas web; no aplica a GOLD_MEMBERSHIP). */
       workDescription: z.string().max(8000).optional(),
       billingContactName: z.string().max(200).optional(),
@@ -278,6 +278,24 @@ export async function POST(req: Request) {
       }
     }
 
+    /** Socio Gold activo: no usar el flujo público con Dispatch fee — /book/gold */
+    if (
+      (serviceType === "CONNECT_STANDARD" ||
+        serviceType === "EMERGENCY" ||
+        serviceType === "HOURLY_PLUMBING") &&
+      session?.user?.id
+    ) {
+      const pubGold = await prisma.goldMembership.findUnique({
+        where: { userId: session.user.id },
+      });
+      if (pubGold?.status === "active") {
+        return NextResponse.json(
+          { error: t(dict, "api.checkout.goldUseMemberBooking") },
+          { status: 403 },
+        );
+      }
+    }
+
     const reservationPriceId = getReservationPriceId();
     const monthlyId = getGoldMonthlyPriceId();
     const annualId = getGoldAnnualPriceId();
@@ -291,7 +309,9 @@ export async function POST(req: Request) {
     const checkoutCancelUrl =
       data.cancelReturn === "bookGold"
         ? `${siteUrl}/book/gold?cancelled=1`
-        : `${siteUrl}/book`;
+        : data.cancelReturn === "joinGold"
+          ? `${siteUrl}/join/gold?cancelled=1`
+          : `${siteUrl}/book`;
 
     const stripe = getStripe();
     const metadata: Record<string, string> = {
@@ -481,8 +501,8 @@ export async function POST(req: Request) {
     }
 
     /**
-     * Instalación por hora ($150/unidad mínima en Stripe).
-     * Price: NEXT_PUBLIC_STRIPE_PRICE_ID_HOURLY_PLUMBING (Product prod_UHBxYhulgITKe4).
+     * Instalación por hora (no Gold): Dispatch fee $195 (mismo Price que reserva estándar);
+     * cubre despacho + primera hora; horas adicionales $150 en sitio.
      */
     if (serviceType === "HOURLY_PLUMBING") {
       if (!data.scheduledAt) {
@@ -491,12 +511,11 @@ export async function POST(req: Request) {
           { status: 400 },
         );
       }
-      const hourlyPid = getHourlyPlumbingPriceId();
-      if (!hourlyPid) {
+      if (!reservationPriceId) {
         return NextResponse.json(
           {
             error:
-              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_HOURLY_PLUMBING (servicio por hora HydroNet).",
+              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA (Dispatch fee $195, servicio por hora).",
           },
           { status: 500 },
         );
@@ -506,16 +525,14 @@ export async function POST(req: Request) {
         customer_email: data.email,
         ...stripeCheckoutTaxDefaults,
         ...stripeCheckoutUxDefaults,
-        line_items: [{ price: hourlyPid, quantity: 1 }],
+        line_items: [{ price: reservationPriceId, quantity: 1 }],
         metadata: {
           ...metadata,
-          billing_mode: "hourly_plumbing",
-          billing_hourly_usd: "150",
-          hourly_minimum_units: "1",
+          ...hourlyDispatchMetadata(),
         },
         custom_text: {
           submit: {
-            message: t(dict, "checkoutStripe.hourlySubmit"),
+            message: t(dict, "checkoutStripe.hourlyFlatFeeSubmit"),
           },
         },
         success_url: checkoutSuccessUrl,
@@ -524,13 +541,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ url: checkout.url });
     }
 
-    /** HydroNet Gold Connect — cita estándar (lun–vie): solo depósito $50; total servicio $950, saldo $900. */
+    /** HydroNet Gold Connect — cita estándar (lun–vie): tarifa plana $195; total servicio $950, saldo $755. */
     if (serviceType === "CONNECT_STANDARD") {
       if (!reservationPriceId) {
         return NextResponse.json(
           {
             error:
-              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA (depósito $50, citas estándar).",
+              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA (tarifa plana $195, citas estándar).",
           },
           { status: 500 },
         );
@@ -546,7 +563,7 @@ export async function POST(req: Request) {
           ...connectDepositMetadata("standard"),
         },
         custom_text: {
-          submit: { message: t(dict, "stripeUi.checkoutDepositSummary") },
+          submit: { message: t(dict, "checkoutStripe.flatFeeSubmit") },
         },
         success_url: checkoutSuccessUrl,
         cancel_url: checkoutCancelUrl,
@@ -555,7 +572,7 @@ export async function POST(req: Request) {
     }
 
     /**
-     * No socio — visita única fin de semana (sáb–dom TN): total $1,250; hoy reserva $50; saldo el día del servicio.
+     * No socio — visita única fin de semana (sáb–dom TN): total $1,250; hoy tarifa plana $195; saldo el día del servicio.
      * Referencia precio $1,250: NEXT_PUBLIC_STRIPE_PRICE_ID_EMERGENCY (metadata).
      */
     if (serviceType === "EMERGENCY") {
@@ -573,7 +590,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
           {
             error:
-              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA (reserva $50).",
+              "Falta NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA (tarifa plana $195).",
           },
           { status: 500 },
         );
@@ -591,7 +608,7 @@ export async function POST(req: Request) {
         },
         custom_text: {
           submit: {
-            message: t(dict, "checkoutStripe.emergencyNonMemberSubmit"),
+            message: t(dict, "checkoutStripe.flatFeeSubmit"),
           },
         },
         success_url: checkoutSuccessUrl,

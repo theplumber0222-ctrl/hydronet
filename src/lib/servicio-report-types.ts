@@ -13,7 +13,7 @@ export type ServicioReportPayload = {
   checklistHandSink: ChecklistStatus;
   checklistGreaseTrap: ChecklistStatus;
   notes: string;
-  /** Gross amount before $50 deposit credit */
+  /** Gross amount before $195 Dispatch fee credit */
   invoiceSubtotal: number;
   depositCredit: number;
   /** invoiceSubtotal - depositCredit, floored at 0 */

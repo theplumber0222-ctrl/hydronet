@@ -52,23 +52,30 @@ export function isStripeSecretKeyFailure(e: unknown): boolean {
   return false;
 }
 
+/** Product ID en Stripe para la tarifa plana de despacho (metadata / referencia). */
+export const STRIPE_PRODUCT_ID_DISPATCH_FLAT = "prod_UJiQdXYnGLe3lh";
+
+/** Descripción unificada del cargo de línea (Stripe metadata, n8n, informes). */
+export const CHARGE_DESCRIPTION_DISPATCH = "Dispatch fee";
+
 /**
- * $50 reserva — citas estándar (lun–vie), depósitos junto a otros servicios.
- * Orden: NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA → STRIPE_PRICE_ID_RESERVA → STRIPE_PRICE_DEPOSIT
+ * Tarifa plana $195 (Dispatch fee) — visita única no socio (lun–vie / fin de semana).
+ * Orden: NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA → STRIPE_PRICE_ID_RESERVA → STRIPE_PRICE_DEPOSIT → default prod
  * En Checkout, `line_items[].price` debe ser un **Price ID** (`price_...`), no un Product ID (`prod_...`).
  */
 export function getReservationPriceId(): string | null {
   const id =
     process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA?.trim() ||
     process.env.STRIPE_PRICE_ID_RESERVA?.trim() ||
-    process.env.STRIPE_PRICE_DEPOSIT?.trim();
+    process.env.STRIPE_PRICE_DEPOSIT?.trim() ||
+    "price_1TL4zzRyJOpdCpaRgZPgOYuz";
   return id || null;
 }
 
 /**
  * Emergencia no socio (sáb–dom, TN): precio Stripe del **servicio** ($1,250).
  * NEXT_PUBLIC_STRIPE_PRICE_ID_EMERGENCY → STRIPE_PRICE_ID_EMERGENCY
- * La reserva de $50 va en línea aparte (NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA).
+ * La tarifa plana $195 va en línea aparte (NEXT_PUBLIC_STRIPE_PRICE_ID_RESERVA).
  */
 export function getPublicEmergencyServicePriceId(): string | null {
   const id =
@@ -89,10 +96,11 @@ export function getEmergencyDepositPriceId(): string | null {
   return getPublicEmergencyServicePriceId();
 }
 
-/** Facturación HydroNet Gold Connect (sin membresía): total de servicio y saldo tras depósito de $50. */
+/** Facturación HydroNet Gold Connect (sin membresía): total de servicio y saldo tras tarifa plana $195. */
 export const CONNECT_STANDARD_TOTAL_USD = 950;
 export const CONNECT_EMERGENCY_TOTAL_USD = 1250;
-export const CONNECT_DEPOSIT_USD = 50;
+/** Tarifa plana cobrada hoy en Stripe (antes depósito $50). */
+export const CONNECT_DEPOSIT_USD = 195;
 
 /** Socio Gold — visita adicional tras agotar las 3 incluidas (lun–vie). */
 export const GOLD_ADDITIONAL_SERVICE_USD = 733.33;
@@ -109,12 +117,35 @@ export function getHourlyPlumbingPriceId(): string | null {
   );
 }
 
+/**
+ * Metadata — servicio por hora (no Gold): mismo cargo $195 que visita única;
+ * cubre despacho + primera hora; horas adicionales según tarifa en sitio ($150/h).
+ */
+export function hourlyDispatchMetadata(): Record<string, string> {
+  return {
+    charge_description: CHARGE_DESCRIPTION_DISPATCH,
+    stripe_product_id_dispatch: STRIPE_PRODUCT_ID_DISPATCH_FLAT,
+    n8n_charge_description: CHARGE_DESCRIPTION_DISPATCH,
+    billing_mode: "hourly_plumbing",
+    billing_hourly_usd: String(HOURLY_PLUMBING_RATE_USD),
+    hourly_additional_hours_usd: String(HOURLY_PLUMBING_RATE_USD),
+    hourly_first_hour_in_dispatch: "true",
+    deposit_usd: String(CONNECT_DEPOSIT_USD),
+  };
+}
+
 export function connectDepositMetadata(
   tier: "standard" | "emergency",
 ): Record<string, string> {
+  const base: Record<string, string> = {
+    charge_description: CHARGE_DESCRIPTION_DISPATCH,
+    stripe_product_id_dispatch: STRIPE_PRODUCT_ID_DISPATCH_FLAT,
+    n8n_charge_description: CHARGE_DESCRIPTION_DISPATCH,
+  };
   if (tier === "standard") {
     const ref = getConnectStandardServicePriceId();
     return {
+      ...base,
       billing_total_usd: String(CONNECT_STANDARD_TOTAL_USD),
       balance_after_deposit_usd: String(
         CONNECT_STANDARD_TOTAL_USD - CONNECT_DEPOSIT_USD,
@@ -127,6 +158,7 @@ export function connectDepositMetadata(
     };
   }
   return {
+    ...base,
     billing_total_usd: String(CONNECT_EMERGENCY_TOTAL_USD),
     balance_pending_usd: String(
       CONNECT_EMERGENCY_TOTAL_USD - CONNECT_DEPOSIT_USD,
@@ -166,7 +198,7 @@ export function goldWeekendEmergencyFullMetadata(
 
 /** Texto legacy ES (preferir i18n `stripeUi.checkoutDepositSummary` en UI). */
 export const CHECKOUT_DEPOSIT_SUMMARY_ES =
-  "Reserva $50 (visita única no socio o por hora; no membresía Gold). Se acredita al total ($950 lun–vie, $1,250 sáb–dom o total por hora). Saldo el día del servicio. No reembolsable salvo cancelación con ≥24 h.";
+  "Dispatch fee $195 (visita única no socio; no membresía Gold). Se acredita al total del servicio ($950 lun–vie, $1,250 sáb–dom). Saldo el día del servicio según política.";
 
 
 /** Gold mensual (~$183.33/mes) — suscripción Checkout */
@@ -270,7 +302,7 @@ export const stripeCheckoutUxDefaults = {
 export const TERMS_VERSION = "tn-2026-04";
 
 export const DEPOSIT_LEGAL_ES =
-  "La reserva de $50 aplica a visitas únicas y trabajo por hora (no a la membresía Gold). No es reembolsable salvo cancelación con al menos 24 horas de anticipación; se acredita al total del servicio. Sujeto a leyes comerciales de Tennessee.";
+  "La tarifa de servicio integral ($195) aplica a visitas únicas no socio (no a la membresía Gold). Condiciones según Términos y política de cancelaciones. Sujeto a leyes comerciales de Tennessee.";
 
 export const SLA_NOTE_ES =
   "Servicios de emergencia fuera de horario estándar están sujetos a disponibilidad y cargos adicionales.";

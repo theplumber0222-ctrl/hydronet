@@ -24,7 +24,7 @@ export const legalEn = {
       "Bookings are made through this site’s form; initial payment may be processed via Stripe Checkout. You must provide accurate contact information and, when required, select an address from Google Places suggestions to validate location.",
     s4P2:
       "Preventive Gold visits included in membership are scheduled on business days (Mon–Fri) per the rules published on the site.",
-    s5Title: "5. Reservation fee and logistics (deposit)",
+    s5Title: "5. Dispatch fee and scheduling",
     s6Title: "6. HydroNet Gold membership",
     s6P1:
       "Gold plans (monthly or annual) include benefits published on the home page (e.g., queue priority, preventive visits per cycle on business days). The monthly plan includes commitment terms and possible early-termination charges, as stated at signup and in the account dashboard.",
@@ -128,13 +128,15 @@ export const legalEn = {
       "This page summarizes deposit, cancellation, and adjustment rules for ",
     p1Part2: "Further contractual detail is in the ",
     p1Part3: ".",
-    s1Title: "1. Reservation fee and deposit ($50)",
+    s1Title: "1. Dispatch fee and scheduling (non-Gold)",
     s1NonGoldScheduling:
-      "For bookings that are not part of a HydroNet Plumbing Gold membership (for example a single jetting visit or hourly work where the $50 reservation applies): cancellations should be requested at least 24 hours before the scheduled service time so we can adjust scheduling and evaluate any refund or credit of the deposit. Any amounts or adjustments will be determined according to the services actually provided and what is recorded in Stripe. These scheduling and deposit rules do not apply to subscription billing or included preventive visits under a Gold membership with HydroNet Plumbing.",
+      "For bookings that are not part of a HydroNet Plumbing Gold membership (for example a single jetting visit with the $195 Dispatch fee, or hourly work with a minimum charge at checkout): cancellations should be requested at least 24 hours before the scheduled service time so we can adjust scheduling and evaluate any refund or credit per policy. Any amounts or adjustments will be determined according to the services actually provided and what is recorded in Stripe. These scheduling and fee rules do not apply to subscription billing or included preventive visits under a Gold membership with HydroNet Plumbing.",
+    s1NoShow:
+      "The $195 Dispatch fee is not refundable if cancellation occurs when the technician has already arrived on site.",
     s2Title: "2. Hourly service",
     s2P1Prefix:
-      "Hourly service is billed with a minimum of one hour at checkout when configured; additional time may be billed per agreement on site. See the booking form for current rates (reference:",
-    s2P1Suffix: "USD per hour or fraction, unless otherwise published).",
+      "Hourly bookings: the $195 Dispatch fee covers dispatch and your first hour. Additional hours are billed on site at ",
+    s2P1Suffix: "USD per hour or fraction (unless otherwise published).",
     s3Title: "3. HydroNet Gold membership",
     s3P2:
       "A HydroNet Plumbing Gold membership is billed as a subscription. Subscription cancellation may be managed from the customer dashboard when available. Early-termination or adjustment charges, if any, follow the commitment terms at signup and what is recorded in Stripe—they are separate from the 24-hour scheduling rule for non-membership bookings in section 1.",

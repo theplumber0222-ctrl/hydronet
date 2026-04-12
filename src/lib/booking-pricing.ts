@@ -16,7 +16,7 @@ export type GoldMembershipSummary = {
 
 /**
  * Socio Gold — cita estándar (solo lun–vie).
- * Sin tarifa de reserva $50: visita incluida = $0; adicional = solo precio de socio.
+ * Sin tarifa plana no socio: visita incluida = $0; adicional = solo precio de socio.
  */
 export function getGoldMemberCheckoutBreakdown(
   gold: GoldMembershipSummary,
@@ -35,7 +35,7 @@ export function getGoldMemberCheckoutBreakdown(
       totalChargeUsd: 0,
       lines: [
         {
-          label: "Visita preventiva incluida (sin reserva $50)",
+          label: "Visita preventiva incluida (sin tarifa plana no socio)",
           amountUsd: 0,
         },
       ],
@@ -52,7 +52,7 @@ export function getGoldMemberCheckoutBreakdown(
   };
 }
 
-/** Socio Gold — emergencia fin de semana: pago único $950 (sin reserva $50). */
+/** Socio Gold — emergencia fin de semana: pago único $950 (sin tarifa plana no socio). */
 export function getGoldWeekendEmergencyDepositBreakdown(): {
   serviceTotalUsd: number;
   depositUsd: number;
@@ -74,8 +74,8 @@ export function getGoldWeekendEmergencyDepositBreakdown(): {
 
 /**
  * No socio.
- * CONNECT: solo reserva $50 hoy; saldo $900.
- * EMERGENCY: solo reserva $50 hoy; saldo pendiente $1,200 (total servicio $1,250).
+ * CONNECT: tarifa plana $195 hoy; saldo $755.
+ * EMERGENCY: tarifa plana $195 hoy; saldo pendiente $1,055 (total servicio $1,250).
  */
 export function getPublicCheckoutBreakdown(
   serviceType: "CONNECT_STANDARD" | "EMERGENCY",
@@ -102,18 +102,23 @@ export function getPublicCheckoutBreakdown(
   };
 }
 
-/** Instalación por hora: cobro de 1 unidad mínima en Stripe ($150). */
+/**
+ * Instalación por hora (no Gold): mismo Dispatch fee $195 que el resto de reservas;
+ * cubre despacho + primera hora de labor/diagnóstico; horas adicionales $150 en sitio.
+ */
 export function getHourlyPlumbingCheckoutBreakdown(): {
+  /** Tarifa por hora tras la primera (facturación en sitio). */
+  additionalHourRateUsd: number;
   serviceTotalUsd: number;
   depositUsd: number;
   balancePendingUsd: number;
   totalChargeUsd: number;
 } {
-  const r = HOURLY_PLUMBING_RATE_USD;
   return {
-    serviceTotalUsd: r,
-    depositUsd: r,
+    additionalHourRateUsd: HOURLY_PLUMBING_RATE_USD,
+    serviceTotalUsd: CONNECT_DEPOSIT_USD,
+    depositUsd: CONNECT_DEPOSIT_USD,
     balancePendingUsd: 0,
-    totalChargeUsd: r,
+    totalChargeUsd: CONNECT_DEPOSIT_USD,
   };
 }

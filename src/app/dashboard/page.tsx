@@ -111,7 +111,7 @@ export default async function DashboardPage() {
         ) : (
           <p className="mt-4 text-slate-400">
             {t(d, "dashboard.noMembership")}{" "}
-            <Link href="/book" className="link-sky">
+            <Link href="/join/gold?billing=annual" className="link-sky">
               {t(d, "dashboard.bookPlan")}
             </Link>
           </p>
