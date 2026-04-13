@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import type { ServiceType } from "@prisma/client";
 import { useI18n } from "@/contexts/I18nContext";
 import { AddressFieldPlaces } from "@/components/AddressFieldPlaces";
+import { CheckoutCancelPlansLink } from "@/components/CheckoutCancelPlansLink";
 import { useGoogleMapsKeyAvailable } from "@/hooks/useGoogleMapsKeyAvailable";
 import {
   getGoldMemberCheckoutBreakdown,
@@ -747,6 +748,7 @@ function GoldMemberBookingFormInner() {
             ? t("bookGold.submitIncluded")
             : t("booking.submitPay")}
       </button>
+      <CheckoutCancelPlansLink />
     </form>
   );
 }

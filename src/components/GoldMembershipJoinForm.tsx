@@ -11,6 +11,7 @@ import {
   isValidFallbackAddressLine,
   isValidUsPhone,
 } from "@/lib/contact-validation";
+import { CheckoutCancelPlansLink } from "@/components/CheckoutCancelPlansLink";
 
 type GoldBilling = "annual" | "monthly";
 
@@ -314,6 +315,7 @@ export function GoldMembershipJoinForm({
             ? t("joinGold.ctaPayAnnual")
             : t("joinGold.ctaPayMonthly")}
       </button>
+      <CheckoutCancelPlansLink />
     </form>
   );
 }

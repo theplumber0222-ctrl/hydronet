@@ -278,6 +278,7 @@ const es = {
     submitPayServiceFee: "Pagar Dispatch fee ($195)",
     submitPayHourly: "Continuar al pago (mín. 1 hora)",
     submitting: "Redirigiendo a pago seguro…",
+    cancelChoosePlan: "Cancelar y elegir otro plan",
     errTerms:
       "Debe aceptar los términos, la política de cancelaciones y las condiciones indicadas.",
     errBusinessName: "Indique el nombre de casa o negocio.",

@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { getDatabaseUrl } from "@/lib/database-url";
 import { prisma } from "@/lib/prisma";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { t } from "@/i18n/t";
@@ -23,8 +24,10 @@ export async function POST(req: Request) {
   const locale = await getLocale();
   const dict = getDictionary(locale);
 
-  if (!process.env.DATABASE_URL?.trim()) {
-    console.error("[register] DATABASE_URL no está definida (Vercel → Environment Variables)");
+  if (!getDatabaseUrl()) {
+    console.error(
+      "[register] Sin DATABASE_URL / POSTGRES_PRISMA_URL / POSTGRES_URL (Vercel → Environment Variables)",
+    );
     return NextResponse.json(
       { error: t(dict, "api.registerDbUnavailable") },
       { status: 503 },
@@ -66,6 +69,15 @@ export async function POST(req: Request) {
         );
       }
       if (e.code === "P1001" || e.code === "P1000") {
+        return NextResponse.json(
+          { error: t(dict, "api.registerDbUnavailable") },
+          { status: 503 },
+        );
+      }
+      if (e.code === "P2021") {
+        console.error(
+          "[register] Tabla inexistente — ejecute npx prisma migrate deploy en la base de producción",
+        );
         return NextResponse.json(
           { error: t(dict, "api.registerDbUnavailable") },
           { status: 503 },

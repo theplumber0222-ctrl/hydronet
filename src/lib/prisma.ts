@@ -1,24 +1,27 @@
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { getDatabaseUrl } from "@/lib/database-url";
 
 /**
- * Prisma 7: URL en `prisma.config.ts` (migrate/generate); cliente con `@prisma/adapter-pg`.
+ * Prisma 6: conexión estándar por `DATABASE_URL` (sin adapter de driver).
+ * En Vercel, reutilizar el cliente en `globalThis` evita agotar conexiones.
  */
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 function createClient() {
-  const connectionString = process.env.DATABASE_URL?.trim();
-  if (!connectionString && process.env.NODE_ENV === "production") {
+  const url = getDatabaseUrl();
+  if (!url && process.env.NODE_ENV === "production") {
     console.error(
-      "[prisma] DATABASE_URL ausente. Conecte Prisma Postgres en Vercel → Storage o defina la variable.",
+      "[prisma] Sin cadena de conexión. Defina DATABASE_URL (o POSTGRES_PRISMA_URL / POSTGRES_URL) en Vercel.",
     );
   }
-  const adapter = new PrismaPg({
-    connectionString:
-      connectionString ?? "postgresql://invalid:invalid@127.0.0.1:5432/placeholder",
-  });
   return new PrismaClient({
-    adapter,
+    ...(url
+      ? {
+          datasources: {
+            db: { url },
+          },
+        }
+      : {}),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
@@ -28,4 +31,4 @@ function createClient() {
 
 export const prisma = globalForPrisma.prisma ?? createClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;

@@ -18,7 +18,10 @@ export async function GoldPricingTable() {
   const d = getDictionary(locale);
 
   return (
-    <section className="mx-auto max-w-5xl rounded-2xl border border-white/[0.06] bg-slate-900/20 px-0 py-8 shadow-[0_0_0_1px_rgba(148,163,184,0.06)] ring-1 ring-white/5 backdrop-blur-sm sm:py-10 lg:px-2">
+    <section
+      id="planes"
+      className="mx-auto max-w-5xl scroll-mt-24 rounded-2xl border border-white/[0.06] bg-slate-900/20 px-0 py-8 shadow-[0_0_0_1px_rgba(148,163,184,0.06)] ring-1 ring-white/5 backdrop-blur-sm sm:py-10 lg:px-2"
+    >
       <h2 className="text-center text-3xl font-bold tracking-tight text-white md:text-4xl">
         {t(d, "pricing.sectionTitle")}
       </h2>

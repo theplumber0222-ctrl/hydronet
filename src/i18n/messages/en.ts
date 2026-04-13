@@ -278,6 +278,7 @@ const en = {
     submitPayServiceFee: "Pay Dispatch fee ($195)",
     submitPayHourly: "Continue to checkout (min. 1 hr)",
     submitting: "Redirecting to secure payment…",
+    cancelChoosePlan: "Cancel and choose another plan",
     errTerms:
       "You must accept the terms, cancellation policy, and conditions shown.",
     errBusinessName: "Enter the home or business name.",
