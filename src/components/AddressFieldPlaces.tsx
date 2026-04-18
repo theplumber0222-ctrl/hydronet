@@ -43,6 +43,8 @@ export function AddressFieldPlaces({
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  // true when the current value came from a real dropdown selection (has a Google placeId)
+  const [selectedFromDropdown, setSelectedFromDropdown] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +57,7 @@ export function AddressFieldPlaces({
       setInputText("");
       setSuggestions([]);
       setOpen(false);
+      setSelectedFromDropdown(false);
     }
   }, [value]);
 
@@ -114,6 +117,7 @@ export function AddressFieldPlaces({
     setSuggestions([]);
     setOpen(false);
     setActiveIdx(-1);
+    setSelectedFromDropdown(true);
     onChangeRef.current(s.description, s.placeId);
   }, []);
 
@@ -155,11 +159,21 @@ export function AddressFieldPlaces({
         onChange={(e) => {
           const v = e.target.value;
           setInputText(v);
+          setSelectedFromDropdown(false);
           if (!v.trim()) onChange("", "");
         }}
         onKeyDown={handleKeyDown}
         onFocus={() => onFocus?.()}
-        onBlur={() => onBlur?.()}
+        onBlur={() => {
+          // If the user typed a reasonable address but never picked from the dropdown
+          // (e.g. autocomplete unavailable), accept the typed text as a fallback so
+          // the form button is not blocked. The server validates length >= 8 chars.
+          const typed = inputText.trim();
+          if (!selectedFromDropdown && typed.length >= 10) {
+            onChange(typed, typed);
+          }
+          onBlur?.();
+        }}
       />
 
       {open && suggestions.length > 0 && (

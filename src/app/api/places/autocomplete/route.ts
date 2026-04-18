@@ -60,7 +60,8 @@ export async function POST(req: Request) {
   const payload = {
     input,
     includedRegionCodes: ["us"],
-    includedPrimaryTypes: ["address"],
+    // locationBias is a soft hint — results outside the box still appear.
+    // No includedPrimaryTypes: keeping it broad so all address formats return results.
     locationBias: {
       rectangle: {
         low: { latitude: 36.42, longitude: -87.52 },
