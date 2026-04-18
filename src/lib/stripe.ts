@@ -153,7 +153,7 @@ export function connectDepositMetadata(
       deposit_usd: String(CONNECT_DEPOSIT_USD),
       connect_tier: "standard",
       ...(ref
-        ? { stripe_price_id_connect_standard_reference: ref }
+        ? { stripe_price_id_connect_std_reference: ref }
         : {}),
     };
   }

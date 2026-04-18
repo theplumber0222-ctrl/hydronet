@@ -552,7 +552,7 @@ const en = {
     inputPlaceholder: "Type and choose an address (Clarksville / TN)",
     hintBelow: "Choose an address from Google Places suggestions.",
     missingApiKey:
-      "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is missing in the client environment. Set it in .env (exact name) and restart Next.js.",
+      "Google Maps API key is missing. In production (e.g. Vercel): Settings → Environment Variables → NEXT_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_API_KEY, enable Production, then redeploy. Locally: set the same name in .env and restart Next.js.",
   },
   planInterval: {
     month: "Gold monthly plan",

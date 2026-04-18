@@ -554,7 +554,7 @@ const es = {
     inputPlaceholder: "Escribe y elige una dirección (Clarksville / TN)",
     hintBelow: "Elija una dirección de la lista de sugerencias de Google Places.",
     missingApiKey:
-      "Falta NEXT_PUBLIC_GOOGLE_MAPS_API_KEY en el entorno del cliente. Defínala en .env (nombre exacto) y reinicie Next.js.",
+      "Falta la clave de Google Maps. En producción (p. ej. Vercel): Settings → Environment Variables → NEXT_PUBLIC_GOOGLE_MAPS_API_KEY o GOOGLE_MAPS_API_KEY, marque Production y redeploy. En su máquina: .env con el mismo nombre y reinicie Next.js.",
   },
   planInterval: {
     month: "Plan mensual Gold",

@@ -30,8 +30,8 @@ export function LoginForm() {
       setError(t("login.error"));
       return;
     }
-    router.push(callbackUrl);
-    router.refresh();
+    await router.refresh();
+    await router.push(callbackUrl);
   }
 
   return (
