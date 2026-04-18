@@ -1,28 +1,13 @@
 "use client";
 
 /**
- * Dirección con Google Places — input aislado (sin .input-field ni ring de Tailwind).
- * Places se adjunta una sola vez; validación solo vía props del formulario.
+ * Address autocomplete backed by a server-side proxy (/api/places/autocomplete).
+ * The Google Maps API key lives only in GOOGLE_MAPS_API_KEY (server env) —
+ * it is never bundled into or sent to the browser.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/contexts/I18nContext";
-import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
-import { loadGooglePlacesScript } from "@/lib/load-google-places-script";
-
-function clarksvilleAreaBounds(): google.maps.LatLngBounds {
-  return new google.maps.LatLngBounds(
-    new google.maps.LatLng(36.42, -87.52),
-    new google.maps.LatLng(36.62, -87.22),
-  );
-}
-
-async function fetchMapsKey(): Promise<string> {
-  const inline = getPublicGoogleMapsApiKey().trim();
-  if (inline) return inline;
-  const res = await fetch("/api/public/google-maps-key", { cache: "no-store" });
-  const data = (await res.json()) as { key?: string };
-  return (data.key ?? "").trim();
-}
+import type { PlaceSuggestion } from "@/app/api/places/autocomplete/route";
 
 export type AddressFieldPlacesProps = {
   value: string;
@@ -33,187 +18,184 @@ export type AddressFieldPlacesProps = {
   onBlur?: () => void;
 };
 
-function MapsError({ detail }: { detail: string }) {
-  const { t } = useI18n();
-  return (
-    <div className="rounded-lg border border-red-500/60 bg-red-950/30 px-3 py-2 text-sm text-red-200">
-      <p className="font-medium">{t("addressAutocomplete.mapsUnavailable")}</p>
-      <p className="mt-1 text-xs text-red-200/90">{detail}</p>
-      <p className="mt-2 text-xs text-red-300/80">{t("addressAutocomplete.checkConsole")}</p>
-    </div>
-  );
+function useDebounce(value: string, delay: number): string {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
 }
 
-function PlacesInputInner({
-  apiKey,
+export function AddressFieldPlaces({
   value,
   onChange,
   disabled,
   showSelectionRequired,
   onFocus,
   onBlur,
-}: AddressFieldPlacesProps & { apiKey: string }) {
+}: AddressFieldPlacesProps) {
   const { t } = useI18n();
+
+  const [inputText, setInputText] = useState(value);
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(-1);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  const [scriptReady, setScriptReady] = useState(false);
-  const [loadError, setLoadError] = useState<Error | null>(null);
+  // Sync external value resets (e.g. form clear)
+  useEffect(() => {
+    if (value === "") {
+      setInputText("");
+      setSuggestions([]);
+      setOpen(false);
+    }
+  }, [value]);
+
+  const debouncedInput = useDebounce(inputText, 320);
 
   useEffect(() => {
+    const query = debouncedInput.trim();
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      setOpen(false);
+      return;
+    }
+
     let cancelled = false;
-    loadGooglePlacesScript(apiKey)
-      .then(() => {
-        if (!cancelled) setScriptReady(true);
+    setLoading(true);
+    setFetchError(false);
+
+    fetch("/api/places/autocomplete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: query }),
+    })
+      .then((r) => r.json() as Promise<{ suggestions?: PlaceSuggestion[] }>)
+      .then((data) => {
+        if (cancelled) return;
+        const list = data.suggestions ?? [];
+        setSuggestions(list);
+        setOpen(list.length > 0);
+        setActiveIdx(-1);
       })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          const err = e instanceof Error ? e : new Error(String(e));
-          console.error("[HydroNet Maps] loadGooglePlacesScript:", err.message);
-          setLoadError(err);
-        }
+      .catch(() => {
+        if (!cancelled) setFetchError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, [apiKey]);
+  }, [debouncedInput]);
 
-  useLayoutEffect(() => {
-    if (!scriptReady || disabled) return;
-    const input = inputRef.current;
-    if (!input) return;
-
-    const options: google.maps.places.AutocompleteOptions = {
-      componentRestrictions: { country: "us" },
-      types: ["address"],
-      strictBounds: false,
-      bounds: clarksvilleAreaBounds(),
-    };
-
-    const autocomplete = new google.maps.places.Autocomplete(input, options);
-    const listener = autocomplete.addListener("place_changed", () => {
-      const place = autocomplete.getPlace();
-      const line = place.formatted_address ?? place.name ?? "";
-      const pid = place.place_id ?? "";
-      onChangeRef.current(line, pid);
-    });
-
-    return () => {
-      listener.remove();
-      google.maps.event.clearInstanceListeners(autocomplete);
-    };
-  }, [scriptReady, disabled]);
-
+  // Close dropdown on outside click
   useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    if (value === "") el.value = "";
-  }, [value]);
+    function handleOutside(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setActiveIdx(-1);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
-  if (loadError) {
-    return <MapsError detail={t("addressAutocomplete.mapsScriptError")} />;
-  }
+  const selectSuggestion = useCallback((s: PlaceSuggestion) => {
+    setInputText(s.description);
+    setSuggestions([]);
+    setOpen(false);
+    setActiveIdx(-1);
+    onChangeRef.current(s.description, s.placeId);
+  }, []);
 
-  if (!scriptReady) {
-    return (
-      <input
-        type="text"
-        disabled
-        className="hydronet-address-input hydronet-address-input--loading"
-        placeholder={t("addressAutocomplete.loadingPlaceholder")}
-        value={value}
-        readOnly
-      />
-    );
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && activeIdx >= 0) {
+      e.preventDefault();
+      selectSuggestion(suggestions[activeIdx]!);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+      setActiveIdx(-1);
+    }
   }
 
   const invalid = Boolean(showSelectionRequired);
 
   return (
-    <div className="hydronet-address-field-root">
+    <div className="hydronet-address-field-root" ref={containerRef}>
       <input
         ref={inputRef}
         type="text"
-        id="hydronet-address-input"
-        name="hydronetStreetAddress"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls="hac-listbox"
+        aria-activedescendant={activeIdx >= 0 ? `hac-opt-${activeIdx}` : undefined}
         className="hydronet-address-input"
         data-hydronet-invalid={invalid ? "1" : undefined}
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
+        value={inputText}
         disabled={disabled}
         placeholder={t("addressAutocomplete.inputPlaceholder")}
-        defaultValue={value}
-        onChange={(e) => onChangeRef.current(e.target.value, "")}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        autoComplete="off"
+        onChange={(e) => {
+          const v = e.target.value;
+          setInputText(v);
+          if (!v.trim()) onChange("", "");
+        }}
+        onKeyDown={handleKeyDown}
+        onFocus={() => onFocus?.()}
+        onBlur={() => onBlur?.()}
       />
+
+      {open && suggestions.length > 0 && (
+        <ul
+          id="hac-listbox"
+          role="listbox"
+          className="hydronet-ac-dropdown"
+        >
+          {suggestions.map((s, i) => (
+            <li
+              key={s.placeId}
+              id={`hac-opt-${i}`}
+              role="option"
+              aria-selected={i === activeIdx}
+              className={`hydronet-ac-option${i === activeIdx ? " hydronet-ac-option--active" : ""}`}
+              onMouseDown={(e) => {
+                e.preventDefault(); // keep focus on input
+                selectSuggestion(s);
+              }}
+            >
+              <span className="hydronet-ac-main">{s.mainText}</span>
+              {s.secondaryText && (
+                <span className="hydronet-ac-secondary">{s.secondaryText}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <p className="mt-1 text-xs text-slate-500">
-        {t("addressAutocomplete.hintBelow")}
+        {loading
+          ? t("addressAutocomplete.loadingMaps")
+          : fetchError
+            ? t("addressAutocomplete.mapsScriptError")
+            : t("addressAutocomplete.hintBelow")}
       </p>
     </div>
   );
-}
-
-export function AddressFieldPlaces(props: AddressFieldPlacesProps) {
-  const { t } = useI18n();
-  const [apiKey, setApiKey] = useState<string | null>(() => {
-    const k = getPublicGoogleMapsApiKey().trim();
-    return k || null;
-  });
-  const [resolved, setResolved] = useState(!!getPublicGoogleMapsApiKey().trim());
-  const [resolveFailed, setResolveFailed] = useState(false);
-
-  useEffect(() => {
-    if (apiKey) {
-      setResolved(true);
-      return;
-    }
-    let cancelled = false;
-    fetchMapsKey()
-      .then((k) => {
-        if (cancelled) return;
-        if (k) {
-          setApiKey(k);
-          setResolved(true);
-        } else {
-          setResolveFailed(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setResolveFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [apiKey]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && resolveFailed && !apiKey) {
-      console.error(
-        "[HydroNet] Sin clave de Maps: defina NEXT_PUBLIC_GOOGLE_MAPS_API_KEY o GOOGLE_MAPS_API_KEY en Vercel y redeploy.",
-      );
-    }
-  }, [resolveFailed, apiKey]);
-
-  if (resolveFailed && !apiKey) {
-    return <MapsError detail={t("addressAutocomplete.missingApiKey")} />;
-  }
-
-  if (!resolved || !apiKey) {
-    return (
-      <input
-        type="text"
-        disabled
-        className="hydronet-address-input hydronet-address-input--loading"
-        placeholder={t("addressAutocomplete.loadingPlaceholder")}
-        value={props.value}
-        readOnly
-      />
-    );
-  }
-
-  return <PlacesInputInner apiKey={apiKey} {...props} />;
 }

@@ -7,11 +7,6 @@
   body {
     @apply min-h-screen bg-[#111827] text-slate-100 antialiased;
   }
-  /* Google Places dropdown */
-  .pac-container {
-    z-index: 100000 !important;
-    -webkit-overflow-scrolling: touch;
-  }
 }
 
 @layer components {
@@ -71,7 +66,41 @@
   .hydronet-address-input--loading {
     opacity: 0.7;
   }
-  input.hydronet-address-input.pac-target-input {
-    background-image: none !important;
+  /* Address autocomplete dropdown */
+  .hydronet-ac-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 50;
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem 0;
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+  .hydronet-ac-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.1s;
+  }
+  .hydronet-ac-option:hover,
+  .hydronet-ac-option--active {
+    background-color: #334155;
+  }
+  .hydronet-ac-main {
+    font-size: 0.875rem;
+    color: #f1f5f9;
+  }
+  .hydronet-ac-secondary {
+    font-size: 0.75rem;
+    color: #94a3b8;
   }
 }
