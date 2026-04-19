@@ -250,7 +250,7 @@ const es = {
     datetimeHintHourly:
       "Solo lunes a viernes (hora Tennessee).",
     datetimeHintSingleVisit:
-      "Hora Tennessee. Regular L-V 8am-4pm = $950 · Emergencia L-V después de 4pm + Sáb-Dom 8am-4pm = $1,250. La tarifa se ajusta al horario que elija.",
+      "Hora Tennessee — la tarifa sigue el día que elija (resumen abajo).",
     chargeSummary: "Resumen de cobro (estimado en Stripe)",
     serviceLine: "Servicio:",
     hourlyRateLine: "Despacho + 1.ª hora (hoy):",
@@ -262,8 +262,8 @@ const es = {
     standardTotal: "Total del servicio:",
     standardWeekday: "lun–vie",
     standardOffHours: "fuera de horario estándar",
-    rateBandWeekday: "Regular L-V 8am-4pm · total $950",
-    rateBandWeekend: "Emergencia L-V después de 4pm + Sáb-Dom 8am-4pm · total $1,250",
+    rateBandWeekday: "Lun–vie · total $950",
+    rateBandWeekend: "Sáb–dom · total $1,250",
     reserveToday: "Dispatch fee hoy:",
     balanceDue: "Saldo pendiente:",
     depositNoteStandard:
