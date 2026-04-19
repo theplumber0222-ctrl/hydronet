@@ -77,7 +77,7 @@ const es = {
     swipeHint: "Desliza para comparar los tres planes",
     carouselAria: "Planes de servicio HydroNet Plumbing",
     planSingleJettingTitle: "HydroNet Plumbing",
-    planSingleJettingKicker: "Jetting · visita única",
+    planSingleJettingKicker: "Jetting / drenajes · visita única",
     planSingleJettingSubtitle:
       "Este servicio te ofrece la limpieza de drenajes como parte del mantenimiento. Es importante hacerlo regularmente para el buen funcionamiento de tus líneas de drenaje: te ahorra dolores de cabeza y problemas futuros si se aplica adecuadamente.",
     singleVisitWeekdayLabel: "Lunes a viernes",
@@ -86,7 +86,7 @@ const es = {
     singleVisitWeekendPrice: "$1,250",
     singleVisitPolicyNote:
       "Se requiere el Dispatch fee de $195 para agendar (no socio). Reembolsos según política de cancelaciones. Gracias por darnos la oportunidad de servirle.",
-    ctaBookSingleJetting: "Reservar visita de jetting",
+    ctaBookSingleJetting: "Reservar jetting / limpieza de drenajes",
     planGoldTitle: "HydroNet Plumbing Gold Jetting",
     planGoldKicker: "Gold · drenajes comerciales",
     planGoldSubtitle:
@@ -100,7 +100,7 @@ const es = {
     ctaJoinAnnual: "$2,200 / año — un solo pago",
     ctaJoinMonthly: "$183.33 / mes",
     hourlyTitle: "HydroNet Plumbing",
-    hourlyKicker: "Por hora · instalaciones y reparaciones",
+    hourlyKicker: "Mano de obra por hora · instalaciones y reparaciones",
     hourlyIntro:
       "En Stripe se cobra el Dispatch fee ($195) para agendar; cubre despacho y primera hora. Cada hora adicional es $150 en sitio según política HydroNet. Si el proyecto requiere más de cuatro horas, se hará una cotización antes de proceder.",
     hourlyBullet1:
@@ -110,7 +110,7 @@ const es = {
     hourlyBullet4: "Calentadores de agua.",
     hourlyBullet5: "Emergencias.",
     bestValue: "Mejor valor",
-    ctaBookHourly: "Reservar por hora",
+    ctaBookHourly: "Reservar plomería por hora",
     reservationAppliesAll:
       "Visita única (no Gold): Dispatch fee $195. Por hora: mín. 1 h. Política: Cancelaciones y reembolsos.",
   },
@@ -227,6 +227,8 @@ const es = {
   booking: {
     brandBlurb: "cumplimiento del International Plumbing Code (IPC 2018).",
     billingMode: "Tipo de reserva",
+    billingModeHint:
+      "Jetting = limpieza de drenajes a alta presión con nuestro equipo. Por hora = mano de obra e instalaciones de plomería cobradas por tiempo (llaves, tuberías, calentadores, etc.).",
     standardAppt:
       "Jetting / limpieza de drenajes — visita única ($950 / $1,250)",
     hourlyRate:

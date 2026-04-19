@@ -76,7 +76,7 @@ const en = {
     swipeHint: "Swipe to compare the three plans",
     carouselAria: "HydroNet Plumbing service plans",
     planSingleJettingTitle: "HydroNet Plumbing",
-    planSingleJettingKicker: "Jetting · single visit",
+    planSingleJettingKicker: "Jetting / drains · single visit",
     planSingleJettingSubtitle:
       "This service provides drain cleaning as part of maintenance. Doing it regularly helps your drain lines work properly and saves headaches and future problems when done correctly.",
     singleVisitWeekdayLabel: "Monday–Friday",
@@ -85,7 +85,7 @@ const en = {
     singleVisitWeekendPrice: "$1,250",
     singleVisitPolicyNote:
       "A $195 Dispatch fee is required to schedule a non-member visit. Refunds follow our cancellation policy (typically 24+ hours’ notice). Thank you for giving us the opportunity to serve you.",
-    ctaBookSingleJetting: "Book jetting visit",
+    ctaBookSingleJetting: "Book jetting / drain visit",
     planGoldTitle: "HydroNet Plumbing Gold Jetting",
     planGoldKicker: "Gold · commercial drain maintenance",
     planGoldSubtitle:
@@ -99,7 +99,7 @@ const en = {
     ctaJoinAnnual: "$2,200 / year — one payment",
     ctaJoinMonthly: "$183.33 / month",
     hourlyTitle: "HydroNet Plumbing",
-    hourlyKicker: "Hourly · installs & repairs",
+    hourlyKicker: "Hourly labor · installs & repairs",
     hourlyIntro:
       "The $195 Dispatch fee is charged in Stripe to schedule; it covers dispatch and your first hour. Each additional hour is $150 on site per HydroNet policy. If the project requires more than four hours, we will provide a quote before proceeding.",
     hourlyBullet1:
@@ -109,7 +109,7 @@ const en = {
     hourlyBullet4: "Water heaters.",
     hourlyBullet5: "Emergencies.",
     bestValue: "Best value",
-    ctaBookHourly: "Book hourly",
+    ctaBookHourly: "Book hourly plumbing labor",
     reservationAppliesAll:
       "Single visits (non-Gold): $195 Dispatch fee. Hourly: min. 1 hr. Full policy: Cancellations & refunds.",
   },
@@ -226,6 +226,8 @@ const en = {
     brandBlurb:
       "compliance with the International Plumbing Code (IPC 2018).",
     billingMode: "Booking type",
+    billingModeHint:
+      "Jetting = high-pressure drain cleaning with our equipment. Hourly = plumbing labor and installations billed by time (fixtures, piping, water heaters, etc.).",
     standardAppt:
       "Jetting / drain cleaning — single visit ($950 / $1,250)",
     hourlyRate:
