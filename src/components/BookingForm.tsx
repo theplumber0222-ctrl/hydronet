@@ -195,6 +195,45 @@ function BookingFormFields() {
     !!scheduledAt &&
     !activeGoldBlocksPublicBook;
 
+  // Build a human-readable list of missing fields so the user knows why the
+  // pay button is disabled. Without this hint the button just looks "broken".
+  const missingFieldHints = useMemo(() => {
+    const out: string[] = [];
+    if (!restaurantName.trim() || restaurantName.trim().length < 2) {
+      out.push(t("booking.businessName"));
+    }
+    if (!addressValid) out.push(t("booking.address"));
+    if (!emailValid) out.push(t("booking.email"));
+    if (!phoneValid) out.push(t("booking.phone"));
+    if (!scheduledAt) out.push(t("booking.datetime"));
+    if (workDescription.trim().length < 10) {
+      out.push(t("verify.workDescription"));
+    }
+    if (billingContactName.trim().length < 2) {
+      out.push(t("verify.billingContactName"));
+    }
+    if (!invoiceEmailValid) out.push(t("verify.invoiceEmail"));
+    if (siteContactName.trim().length < 2) {
+      out.push(t("verify.siteContactName"));
+    }
+    if (!sitePhoneValid) out.push(t("verify.siteContactPhone"));
+    if (!terms) out.push(t("booking.termsCheckbox"));
+    return out;
+  }, [
+    addressValid,
+    billingContactName,
+    emailValid,
+    invoiceEmailValid,
+    phoneValid,
+    restaurantName,
+    scheduledAt,
+    siteContactName,
+    sitePhoneValid,
+    t,
+    terms,
+    workDescription,
+  ]);
+
   const pricePreview = useMemo(() => {
     if (!scheduledIsoForPreview || dateMismatchMessage) return null;
     if (billingMode === "hourly") {
@@ -733,10 +772,25 @@ function BookingFormFields() {
         </p>
       )}
 
+      {!canProceedToPayment && missingFieldHints.length > 0 && (
+        <div className="rounded-md border border-amber-700/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+          <p className="font-medium">
+            {locale === "es"
+              ? "Falta completar para continuar:"
+              : "To continue, please complete:"}
+          </p>
+          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+            {missingFieldHints.map((label) => (
+              <li key={label}>{label}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={loading || !canProceedToPayment}
-        className="btn-primary w-full disabled:opacity-50"
+        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? t("booking.submitting") : t("booking.submitPayServiceFee")}
       </button>

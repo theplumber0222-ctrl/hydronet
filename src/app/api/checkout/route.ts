@@ -314,7 +314,11 @@ export async function POST(req: Request) {
           : `${siteUrl}/book`;
 
     const stripe = getStripe();
+    // app_source identifies this checkout as HydroNet so that any other webhook
+    // listener on the same Stripe account (e.g. HydraTek) can ignore the event.
     const metadata: Record<string, string> = {
+      app_source: "hydronet",
+      brand: "HydroNet Plumbing",
       service_type: serviceType,
       restaurant_name: data.restaurantName,
       address_line: data.addressLine,
