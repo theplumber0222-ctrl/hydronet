@@ -264,6 +264,12 @@ const es = {
     standardOffHours: "fuera de horario estándar",
     rateBandWeekday: "Regular L-V 8am-4pm · total $950",
     rateBandWeekend: "Emergencia L-V después de 4pm + Sáb-Dom 8am-4pm · total $1,250",
+    tierRegularLabel: "Visita regular",
+    tierRegularHint: "Lun-Vie 8am-4pm",
+    tierEmergencyLabel: "Visita emergencia",
+    tierEmergencyHint: "Lun-Vie después de 4pm + Sáb-Dom 8am-4pm",
+    tierAutoSelectHint:
+      "El cobro se ajusta automáticamente al horario que elija más abajo. La opción que aplica se resaltará.",
     reserveToday: "Dispatch fee hoy:",
     balanceDue: "Saldo pendiente:",
     depositNoteStandard:

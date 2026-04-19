@@ -264,6 +264,12 @@ const en = {
     standardOffHours: "outside standard hours",
     rateBandWeekday: "Regular Mon-Fri 8am-4pm · $950 total",
     rateBandWeekend: "Emergency Mon-Fri after 4pm + Sat-Sun 8am-4pm · $1,250 total",
+    tierRegularLabel: "Regular visit",
+    tierRegularHint: "Mon-Fri 8am-4pm",
+    tierEmergencyLabel: "Emergency visit",
+    tierEmergencyHint: "Mon-Fri after 4pm + Sat-Sun 8am-4pm",
+    tierAutoSelectHint:
+      "Pricing adjusts automatically to the time slot you pick below. The matching option will be highlighted.",
     reserveToday: "Dispatch fee today:",
     balanceDue: "Balance due:",
     depositNoteStandard:
