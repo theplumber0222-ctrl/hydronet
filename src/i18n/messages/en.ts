@@ -233,6 +233,15 @@ const en = {
     hourlyRate:
       "Hourly plumbing & installation labor ($150/hr after the 1st hour)",
     serviceLabel: "Service type",
+    jettingPricingExplainerTitle: "Service total for this visit (before Dispatch fee)",
+    jettingPricingTier950:
+      "$950 total — Mon–Fri 8am–4pm (Tennessee time).",
+    jettingPricingTier1250:
+      "$1,250 total — Mon–Fri before 8am or after 4pm, or Sat–Sun 8am–4pm (Tennessee time).",
+    jettingPricingDispatchNote:
+      "You pay the $195 Dispatch fee in Stripe today; it is credited toward whichever total applies. The balance shown below is due when the visit is completed.",
+    jettingPricingPickDate:
+      "Choose a date and time below — the summary will show the exact total for your slot.",
     hourlyBox:
       "Specialized technical work under IPC 2018. You pay the $195 Dispatch fee to confirm the visit; it covers dispatch and your first hour. Additional hours are $150 on site.",
     goldMemberBanner:
@@ -256,6 +265,8 @@ const en = {
     datetimeHintSingleVisit:
       "Tennessee time — $950 Mon–Fri 8am–4pm; $1,250 evenings (after 4pm), early mornings (before 8am), and Sat–Sun 8am–4pm (summary below).",
     chargeSummary: "Charge summary (estimated in Stripe)",
+    chargeSummaryJettingSubtitle:
+      "The service total ($950 or $1,250) is determined by your selected date and time — Tennessee time.",
     serviceLine: "Service:",
     hourlyRateLine: "Dispatch + 1st hour (today):",
     hourlyMin: "",

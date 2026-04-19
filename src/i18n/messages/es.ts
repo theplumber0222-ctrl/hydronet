@@ -234,6 +234,16 @@ const es = {
     hourlyRate:
       "Plomería por hora — mano de obra ($150/h tras la 1.ª hora)",
     serviceLabel: "Tipo de servicio",
+    jettingPricingExplainerTitle:
+      "Total del servicio de esta visita (antes del Dispatch fee)",
+    jettingPricingTier950:
+      "$950 en total — lun–vie 8am–4pm (hora Tennessee).",
+    jettingPricingTier1250:
+      "$1,250 en total — lun–vie antes de 8am o después de 4pm, o sáb–dom 8am–4pm (hora Tennessee).",
+    jettingPricingDispatchNote:
+      "Hoy paga el Dispatch fee $195 en Stripe; se acredita al total que corresponda. El saldo indicado abajo se paga al completar la visita.",
+    jettingPricingPickDate:
+      "Elija fecha y hora abajo — el resumen mostrará el total exacto para ese horario.",
     hourlyBox:
       "Servicios técnicos bajo IPC 2018. Paga el Dispatch fee $195 para confirmar la visita; cubre despacho y primera hora. Las horas siguientes se facturan a $150 en sitio.",
     goldMemberBanner:
@@ -256,6 +266,8 @@ const es = {
     datetimeHintSingleVisit:
       "Hora Tennessee — $950 lun–vie 8am–4pm; $1,250 fuera de ese horario entre semana o sáb–dom 8am–4pm (resumen abajo).",
     chargeSummary: "Resumen de cobro (estimado en Stripe)",
+    chargeSummaryJettingSubtitle:
+      "El total del servicio ($950 o $1,250) lo define la fecha y hora que eligió — hora Tennessee.",
     serviceLine: "Servicio:",
     hourlyRateLine: "Despacho + 1.ª hora (hoy):",
     hourlyMin: "",

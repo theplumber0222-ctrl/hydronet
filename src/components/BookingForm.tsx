@@ -449,20 +449,37 @@ function BookingFormFields() {
       </div>
 
       {billingMode === "standard" && (
-        <div>
-          <label className="label">{t("booking.serviceLabel")}</label>
-          <select
-            className="input-field"
-            value={catalogId}
-            onChange={(e) => setCatalogId(e.target.value as CatalogId)}
-          >
-            {serviceOptions.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-slate-400">{selectedOption.hint}</p>
+        <div className="space-y-3">
+          <div>
+            <label className="label">{t("booking.serviceLabel")}</label>
+            <select
+              className="input-field"
+              value={catalogId}
+              onChange={(e) => setCatalogId(e.target.value as CatalogId)}
+            >
+              {serviceOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">{selectedOption.hint}</p>
+          </div>
+          <div className="rounded-xl border border-sky-600/35 bg-sky-950/25 p-4 text-xs leading-relaxed text-slate-300">
+            <p className="text-sm font-semibold text-sky-200">
+              {t("booking.jettingPricingExplainerTitle")}
+            </p>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-slate-300">
+              <li>{t("booking.jettingPricingTier950")}</li>
+              <li>{t("booking.jettingPricingTier1250")}</li>
+            </ul>
+            <p className="mt-3 text-[11px] text-slate-400 sm:text-xs">
+              {t("booking.jettingPricingDispatchNote")}
+            </p>
+            <p className="mt-2 text-[11px] font-medium text-sky-300/95 sm:text-xs">
+              {t("booking.jettingPricingPickDate")}
+            </p>
+          </div>
         </div>
       )}
 
@@ -670,7 +687,14 @@ function BookingFormFields() {
           <p className="text-sm font-semibold text-sky-300">
             {t("booking.chargeSummary")}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          {pricePreview.mode === "standard" && (
+            <p className="mt-1 text-xs leading-relaxed text-sky-200/90">
+              {t("booking.chargeSummaryJettingSubtitle")}
+            </p>
+          )}
+          <p
+            className={`text-xs text-slate-500 ${pricePreview.mode === "standard" ? "mt-2" : "mt-1"}`}
+          >
             {t("booking.serviceLine")}{" "}
             <strong className="text-slate-300">{pricePreview.label}</strong>
           </p>
