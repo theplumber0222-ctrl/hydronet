@@ -80,9 +80,9 @@ const es = {
     planSingleJettingKicker: "Jetting · visita única",
     planSingleJettingSubtitle:
       "Este servicio te ofrece la limpieza de drenajes como parte del mantenimiento. Es importante hacerlo regularmente para el buen funcionamiento de tus líneas de drenaje: te ahorra dolores de cabeza y problemas futuros si se aplica adecuadamente.",
-    singleVisitWeekdayLabel: "Lunes a viernes",
+    singleVisitWeekdayLabel: "Horario regular · Lun-Vie 8am-4pm",
     singleVisitWeekdayPrice: "$950",
-    singleVisitWeekendLabel: "Sábado y domingo",
+    singleVisitWeekendLabel: "Emergencia · Lun-Vie después de 4pm + Sáb-Dom 8am-4pm",
     singleVisitWeekendPrice: "$1,250",
     singleVisitPolicyNote:
       "Se requiere el Dispatch fee de $195 para agendar (no socio). Reembolsos según política de cancelaciones. Gracias por darnos la oportunidad de servirle.",
