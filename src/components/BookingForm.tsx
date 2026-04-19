@@ -15,7 +15,7 @@ import {
 } from "@/lib/booking-pricing";
 import {
   getDateMismatchCode,
-  isEmergencySlotTN,
+  isWeekdayTN,
 } from "@/lib/calendar-rules";
 import {
   isValidEmailFormat,
@@ -123,10 +123,9 @@ function BookingFormFields() {
   const serviceType: ServiceType = useMemo(() => {
     if (billingMode === "hourly") return "HOURLY_PLUMBING";
     if (!scheduledIsoForPreview) return "CONNECT_STANDARD";
-    // Emergencia ($1,250) cubre Sáb-Dom y L-V después de 4pm Tennessee.
-    return isEmergencySlotTN(scheduledIsoForPreview)
-      ? "EMERGENCY"
-      : "CONNECT_STANDARD";
+    return isWeekdayTN(scheduledIsoForPreview)
+      ? "CONNECT_STANDARD"
+      : "EMERGENCY";
   }, [billingMode, scheduledIsoForPreview]);
 
   const selectedOption = serviceOptions.find((o) => o.id === catalogId)!;
@@ -244,9 +243,9 @@ function BookingFormFields() {
         ...getHourlyPlumbingCheckoutBreakdown(),
       };
     }
-    const st = isEmergencySlotTN(scheduledIsoForPreview)
-      ? "EMERGENCY"
-      : "CONNECT_STANDARD";
+    const st = isWeekdayTN(scheduledIsoForPreview)
+      ? "CONNECT_STANDARD"
+      : "EMERGENCY";
     const pub = getPublicCheckoutBreakdown(st);
     return {
       mode: "standard" as const,

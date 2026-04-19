@@ -79,9 +79,9 @@ const en = {
     planSingleJettingKicker: "Jetting · single visit",
     planSingleJettingSubtitle:
       "This service provides drain cleaning as part of maintenance. Doing it regularly helps your drain lines work properly and saves headaches and future problems when done correctly.",
-    singleVisitWeekdayLabel: "Regular hours · Mon-Fri 8am-4pm",
+    singleVisitWeekdayLabel: "Monday–Friday",
     singleVisitWeekdayPrice: "$950",
-    singleVisitWeekendLabel: "Emergency · Mon-Fri after 4pm + Sat-Sun 8am-4pm",
+    singleVisitWeekendLabel: "Saturday–Sunday",
     singleVisitWeekendPrice: "$1,250",
     singleVisitPolicyNote:
       "A $195 Dispatch fee is required to schedule a non-member visit. Refunds follow our cancellation policy (typically 24+ hours’ notice). Thank you for giving us the opportunity to serve you.",
