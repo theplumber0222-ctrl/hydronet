@@ -300,6 +300,11 @@ const es = {
     submitPay: "Reserva segura con Stripe",
     submitPayServiceFee:
       "Pagar Dispatch fee $195 para agendar (saldo el día del servicio)",
+    chooseTierToPay: "Elija la tarifa según el horario seleccionado",
+    submitPayStandard950:
+      "Total servicio $950 — pagar Dispatch $195 hoy (saldo el día del servicio)",
+    submitPayEmergency1250:
+      "Total servicio $1,250 — pagar Dispatch $195 hoy (saldo el día del servicio)",
     submitPayHourly: "Continuar al pago (mín. 1 hora)",
     submitting: "Redirigiendo a pago seguro…",
     cancelChoosePlan: "Cancelar y elegir otro plan",

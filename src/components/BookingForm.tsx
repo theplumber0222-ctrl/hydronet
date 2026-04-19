@@ -295,8 +295,17 @@ function BookingFormFields() {
     setPlaceId(pid);
   };
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const slotValidStandard = useMemo(() => {
+    if (!scheduledIsoForPreview) return false;
+    return getDateMismatchCode("CONNECT_STANDARD", scheduledIsoForPreview) === null;
+  }, [scheduledIsoForPreview]);
+
+  const slotValidEmergency = useMemo(() => {
+    if (!scheduledIsoForPreview) return false;
+    return getDateMismatchCode("EMERGENCY", scheduledIsoForPreview) === null;
+  }, [scheduledIsoForPreview]);
+
+  async function runCheckout(serviceTypeForApi: ServiceType) {
     setAddressSubmitAttempted(true);
     setError(null);
     if (!terms) {
@@ -305,7 +314,7 @@ function BookingFormFields() {
     }
     if (scheduledAt) {
       const iso = new Date(scheduledAt).toISOString();
-      const mismatch = getDateMismatchCode(serviceType, iso);
+      const mismatch = getDateMismatchCode(serviceTypeForApi, iso);
       if (mismatch) {
         setError(
           mismatch === "WEEKDAY_ONLY"
@@ -351,7 +360,7 @@ function BookingFormFields() {
     setLoading(true);
     try {
       const body: Record<string, unknown> = {
-        serviceType,
+        serviceType: serviceTypeForApi,
         serviceCatalogLine:
           billingMode === "hourly" ? hourlyLabel : selectedServiceLabel,
         restaurantName,
@@ -399,7 +408,11 @@ function BookingFormFields() {
   }
 
   return (
-    <form noValidate onSubmit={onSubmit} className="mx-auto max-w-lg space-y-5">
+    <form
+      noValidate
+      onSubmit={(e) => e.preventDefault()}
+      className="mx-auto max-w-lg space-y-5"
+    >
       <p className="rounded-lg border border-slate-700 bg-slate-900/40 p-3 text-xs text-slate-400">
         <strong className="text-slate-300">HydroNet Plumbing</strong>{" "}
         — {t("booking.brandBlurb")}{" "}
@@ -880,17 +893,48 @@ function BookingFormFields() {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={loading || !canProceedToPayment}
-        className="btn-primary w-full text-sm leading-snug disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading
-          ? t("booking.submitting")
-          : billingMode === "hourly"
-            ? t("booking.submitPayHourly")
-            : t("booking.submitPayServiceFee")}
-      </button>
+      {billingMode === "standard" ? (
+        <div className="space-y-2">
+          <p className="text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            {t("booking.chooseTierToPay")}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={
+                loading ||
+                !canProceedToPayment ||
+                !slotValidStandard
+              }
+              onClick={() => void runCheckout("CONNECT_STANDARD")}
+              className="rounded-xl border border-sky-500/60 bg-sky-950/40 px-3 py-3 text-sm font-semibold leading-snug text-sky-100 shadow-lg transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? t("booking.submitting") : t("booking.submitPayStandard950")}
+            </button>
+            <button
+              type="button"
+              disabled={
+                loading ||
+                !canProceedToPayment ||
+                !slotValidEmergency
+              }
+              onClick={() => void runCheckout("EMERGENCY")}
+              className="rounded-xl border border-orange-500/60 bg-orange-950/30 px-3 py-3 text-sm font-semibold leading-snug text-orange-100 shadow-lg transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? t("booking.submitting") : t("booking.submitPayEmergency1250")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={loading || !canProceedToPayment}
+          onClick={() => void runCheckout("HOURLY_PLUMBING")}
+          className="btn-primary w-full text-sm leading-snug disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? t("booking.submitting") : t("booking.submitPayHourly")}
+        </button>
+      )}
       <CheckoutCancelPlansLink />
     </form>
   );

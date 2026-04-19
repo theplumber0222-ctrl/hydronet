@@ -298,6 +298,11 @@ const en = {
     refundsLink: "Cancellations & refunds policy",
     submitPay: "Secure booking with Stripe",
     submitPayServiceFee: "Pay $195 Dispatch fee to schedule (balance on service day)",
+    chooseTierToPay: "Choose the rate for your selected time",
+    submitPayStandard950:
+      "$950 service total — pay $195 Dispatch fee now (balance on service day)",
+    submitPayEmergency1250:
+      "$1,250 service total — pay $195 Dispatch fee now (balance on service day)",
     submitPayHourly: "Continue to checkout (min. 1 hr)",
     submitting: "Redirecting to secure payment…",
     cancelChoosePlan: "Cancel and choose another plan",
