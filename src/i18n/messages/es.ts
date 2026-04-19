@@ -243,7 +243,7 @@ const es = {
     jettingPricingDispatchNote:
       "Para agendar la cita paga ahora el Dispatch fee de $195 en Stripe. Ese monto se acredita al total del servicio ($950 o $1,250). El saldo restante se cobra el día del servicio al terminar la visita — no al reservar.",
     jettingPricingPickDate:
-      "Elija fecha y hora abajo — el resumen mostrará el total exacto para ese horario.",
+      "Use los campos de fecha y hora más abajo — el resumen mostrará el total exacto para ese horario.",
     cancellationNotice24h:
       "Las cancelaciones requieren al menos 24 horas de anticipación. Detalle: política de Cancelaciones y reembolsos.",
     hourlyBox:
@@ -262,6 +262,10 @@ const es = {
     emailHint:
       "Formato inválido: use un dominio real (p. ej. nombre@empresa.com).",
     datetime: "Fecha y hora preferidas",
+    scheduleDateLabel: "Fecha",
+    scheduleTimeLabel: "Hora",
+    chargeSummaryAfterSchedule:
+      "El resumen de cobro (monto a pagar hoy y total del servicio) aparece automáticamente al elegir fecha y hora válidas.",
     datetimeHint: "Citas: solo lunes a viernes (horario Tennessee).",
     datetimeHintHourly:
       "Solo lunes a viernes (hora Tennessee).",

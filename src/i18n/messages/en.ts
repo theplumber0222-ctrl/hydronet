@@ -241,7 +241,7 @@ const en = {
     jettingPricingDispatchNote:
       "To schedule the appointment you pay the $195 Dispatch fee in Stripe now. That fee is credited toward your service total ($950 or $1,250). The remaining balance is due on the day of service when the visit is finished — not at booking.",
     jettingPricingPickDate:
-      "Choose a date and time below — the summary will show the exact total for your slot.",
+      "Use the date and time fields below — the summary will show the exact total for your slot.",
     cancellationNotice24h:
       "Cancellations require at least 24 hours advance notice. Details: Cancellations & refunds policy.",
     hourlyBox:
@@ -260,6 +260,10 @@ const en = {
     emailHint:
       "Invalid format: use a real domain (e.g. name@business.com).",
     datetime: "Preferred date and time",
+    scheduleDateLabel: "Date",
+    scheduleTimeLabel: "Time",
+    chargeSummaryAfterSchedule:
+      "The charge summary (amount due today and service total) appears automatically after you select a valid date and time.",
     datetimeHint:
       "Appointments: Monday–Friday only (Tennessee time).",
     datetimeHintHourly:

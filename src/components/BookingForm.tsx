@@ -9,6 +9,7 @@ import { useI18n } from "@/contexts/I18nContext";
 import { AddressFieldPlaces } from "@/components/AddressFieldPlaces";
 import { CheckoutCancelPlansLink } from "@/components/CheckoutCancelPlansLink";
 import { useGoogleMapsKeyAvailable } from "@/hooks/useGoogleMapsKeyAvailable";
+import { useScheduledDateTime } from "@/hooks/useScheduledDateTime";
 import {
   getHourlyPlumbingCheckoutBreakdown,
   getPublicCheckoutBreakdown,
@@ -64,7 +65,14 @@ function BookingFormFields() {
   const [placeId, setPlaceId] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const {
+    scheduledDate,
+    setScheduledDate,
+    scheduledTime,
+    setScheduledTime,
+    scheduledAt,
+    minDateStr,
+  } = useScheduledDateTime();
   const [workDescription, setWorkDescription] = useState("");
   const [billingContactName, setBillingContactName] = useState("");
   const [invoiceEmail, setInvoiceEmail] = useState("");
@@ -665,18 +673,41 @@ function BookingFormFields() {
       </div>
 
       <div>
-        <label className="label">{t("booking.datetime")}</label>
-        <input
-          className="input-field"
-          type="datetime-local"
-          required
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
-        />
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="label mb-2">{t("booking.datetime")}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-400">
+              {t("booking.scheduleDateLabel")}
+            </label>
+            <input
+              className="input-field"
+              type="date"
+              required
+              min={minDateStr}
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-400">
+              {t("booking.scheduleTimeLabel")}
+            </label>
+            <input
+              className="input-field"
+              type="time"
+              required
+              value={scheduledTime}
+              onChange={(e) => setScheduledTime(e.target.value)}
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
           {billingMode === "hourly"
             ? t("booking.datetimeHintHourly")
             : t("booking.datetimeHintSingleVisit")}
+        </p>
+        <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+          {t("booking.chargeSummaryAfterSchedule")}
         </p>
         {dateMismatchMessage && (
           <p className="mt-2 text-sm font-medium text-red-400">
