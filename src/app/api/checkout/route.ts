@@ -61,7 +61,7 @@ function createCheckoutBodySchema(dict: Messages) {
     .object({
       serviceType: serviceEnum,
       goldBilling: goldBillingEnum.optional(),
-      /** Línea de catálogo HydraTek (etiqueta del formulario). */
+      /** Línea de catálogo / servicio (etiqueta del formulario). */
       serviceCatalogLine: z.string().min(1).max(500).optional(),
       restaurantName: z.string().min(2),
       addressLine: z.string().min(1),
@@ -329,8 +329,8 @@ export async function POST(req: Request) {
           : `${siteUrl}/book`;
 
     const stripe = getStripe();
-    // app_source identifies this checkout as HydroNet so that any other webhook
-    // listener on the same Stripe account (e.g. HydraTek) can ignore the event.
+    // app_source identifies this checkout as HydroNet so other webhook listeners
+    // on the same Stripe account can filter events.
     const metadata: Record<string, string> = {
       app_source: "hydronet",
       brand: "HydroNet Plumbing",

@@ -59,16 +59,6 @@ export function isRegularWeekdayConnectSlotTN(isoDate: string): boolean {
   return h >= 8 && h < 16;
 }
 
-/** L–V después de 4pm TN (16:00 en adelante). */
-export function isAfterHoursWeekdayTN(isoDate: string): boolean {
-  return isWeekdayTN(isoDate) && getHourTN(isoDate) >= 16;
-}
-
-/** L–V antes de 8am TN. */
-export function isBeforeHoursWeekdayTN(isoDate: string): boolean {
-  return isWeekdayTN(isoDate) && getHourTN(isoDate) < 8;
-}
-
 /**
  * Slot considerado emergencia para no-socio (Jetting Visita Única / Connect):
  *  - Sáb–Dom 8am–4pm

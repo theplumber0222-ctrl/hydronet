@@ -260,8 +260,6 @@ const en = {
     chargeToday: "Charged today in Stripe: $",
     ipcNote: "IPC 2018 — professional labor · HydroNet LLC.",
     standardTotal: "Service total:",
-    standardWeekday: "Mon–Fri",
-    standardOffHours: "outside standard hours",
     rateBandWeekday: "Mon–Fri 8am–4pm · $950 total",
     rateBandWeekend: "Sat–Sun 8am–4pm · $1,250 total",
     rateBandEmergencyWeekday: "Mon–Fri outside 8am–4pm · $1,250 total",
@@ -304,8 +302,6 @@ const en = {
     errSpendLimit: "Enter a valid dollar amount or leave blank.",
     dateMismatchWeekday:
       "Monday–Friday only (Tennessee time).",
-    dateMismatchWeekendNonMember:
-      "The $1,250 weekend service applies to Saturday and Sunday only (Tennessee time).",
     dateMismatchWeekdayHours:
       "Standard rate ($950) is Monday–Friday 8am–4pm only (Tennessee time).",
     dateMismatchOutsideHours:

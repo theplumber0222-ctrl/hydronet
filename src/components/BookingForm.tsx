@@ -128,7 +128,6 @@ function BookingFormFields() {
     if (isRegularWeekdayConnectSlotTN(scheduledIsoForPreview)) {
       return "CONNECT_STANDARD";
     }
-    if (isEmergencySlotTN(scheduledIsoForPreview)) return "EMERGENCY";
     return "EMERGENCY";
   }, [billingMode, scheduledIsoForPreview]);
 
