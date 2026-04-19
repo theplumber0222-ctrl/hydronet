@@ -74,7 +74,9 @@ export async function PATCH(
       const key =
         e.code === "WEEKDAY_ONLY"
           ? "booking.dateMismatchWeekday"
-          : "booking.dateMismatchWeekendGold";
+          : e.code === "WEEKEND_EMERGENCY_GOLD"
+            ? "booking.dateMismatchWeekendGold"
+            : "booking.dateMismatchOutsideHours";
       return NextResponse.json({ error: t(dict, key) }, { status: 400 });
     }
     const message = e instanceof Error ? e.message : t(dict, "api.invalidInput");

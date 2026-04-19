@@ -15,7 +15,9 @@ import {
 } from "@/lib/booking-pricing";
 import {
   getDateMismatchCode,
-  isWeekdayTN,
+  isEmergencySlotTN,
+  isRegularWeekdayConnectSlotTN,
+  isWeekendTN,
 } from "@/lib/calendar-rules";
 import {
   isValidEmailFormat,
@@ -123,9 +125,11 @@ function BookingFormFields() {
   const serviceType: ServiceType = useMemo(() => {
     if (billingMode === "hourly") return "HOURLY_PLUMBING";
     if (!scheduledIsoForPreview) return "CONNECT_STANDARD";
-    return isWeekdayTN(scheduledIsoForPreview)
-      ? "CONNECT_STANDARD"
-      : "EMERGENCY";
+    if (isRegularWeekdayConnectSlotTN(scheduledIsoForPreview)) {
+      return "CONNECT_STANDARD";
+    }
+    if (isEmergencySlotTN(scheduledIsoForPreview)) return "EMERGENCY";
+    return "EMERGENCY";
   }, [billingMode, scheduledIsoForPreview]);
 
   const selectedOption = serviceOptions.find((o) => o.id === catalogId)!;
@@ -144,10 +148,16 @@ function BookingFormFields() {
     const code = getDateMismatchCode(serviceType, scheduledIsoForPreview);
     if (!code) return null;
     if (code === "WEEKDAY_ONLY") return t("booking.dateMismatchWeekday");
-    if (code === "EMERGENCY_WEEKEND_ONLY") {
-      return t("booking.dateMismatchWeekendNonMember");
+    if (code === "CONNECT_WEEKDAY_HOURS_ONLY") {
+      return t("booking.dateMismatchWeekdayHours");
     }
-    return t("booking.dateMismatchWeekendGold");
+    if (code === "PUBLIC_SLOT_OUT_OF_HOURS") {
+      return t("booking.dateMismatchOutsideHours");
+    }
+    if (code === "WEEKEND_EMERGENCY_GOLD") {
+      return t("booking.dateMismatchWeekendGold");
+    }
+    return t("booking.dateMismatchOutsideHours");
   }, [scheduledIsoForPreview, serviceType, t]);
 
   const hasGoogleMapsKey = useGoogleMapsKeyAvailable();
@@ -243,14 +253,25 @@ function BookingFormFields() {
         ...getHourlyPlumbingCheckoutBreakdown(),
       };
     }
-    const st = isWeekdayTN(scheduledIsoForPreview)
-      ? "CONNECT_STANDARD"
-      : "EMERGENCY";
+    let st: "CONNECT_STANDARD" | "EMERGENCY";
+    if (isRegularWeekdayConnectSlotTN(scheduledIsoForPreview)) {
+      st = "CONNECT_STANDARD";
+    } else if (isEmergencySlotTN(scheduledIsoForPreview)) {
+      st = "EMERGENCY";
+    } else {
+      return null;
+    }
     const pub = getPublicCheckoutBreakdown(st);
+    const rateBand =
+      st === "CONNECT_STANDARD"
+        ? ("weekday" as const)
+        : isWeekendTN(scheduledIsoForPreview)
+          ? ("weekend" as const)
+          : ("weekdayEmergency" as const);
     return {
       mode: "standard" as const,
       label: selectedServiceLabel,
-      rateBand: st === "CONNECT_STANDARD" ? ("weekday" as const) : ("weekend" as const),
+      rateBand,
       ...pub,
     };
   }, [
@@ -281,9 +302,13 @@ function BookingFormFields() {
         setError(
           mismatch === "WEEKDAY_ONLY"
             ? t("booking.dateMismatchWeekday")
-            : mismatch === "EMERGENCY_WEEKEND_ONLY"
-              ? t("booking.dateMismatchWeekendNonMember")
-              : t("booking.dateMismatchWeekendGold"),
+            : mismatch === "CONNECT_WEEKDAY_HOURS_ONLY"
+              ? t("booking.dateMismatchWeekdayHours")
+              : mismatch === "PUBLIC_SLOT_OUT_OF_HOURS"
+                ? t("booking.dateMismatchOutsideHours")
+                : mismatch === "WEEKEND_EMERGENCY_GOLD"
+                  ? t("booking.dateMismatchWeekendGold")
+                  : t("booking.dateMismatchOutsideHours"),
         );
         return;
       }
@@ -668,7 +693,9 @@ function BookingFormFields() {
                 (
                 {pricePreview.rateBand === "weekday"
                   ? t("booking.rateBandWeekday")
-                  : t("booking.rateBandWeekend")}
+                  : pricePreview.rateBand === "weekend"
+                    ? t("booking.rateBandWeekend")
+                    : t("booking.rateBandEmergencyWeekday")}
                 )
               </p>
               <p>

@@ -4,7 +4,10 @@ import type { GoldMembership } from "@prisma/client";
 import { ServiceType } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { assertDateAllowedForService } from "@/lib/calendar-rules";
+import {
+  assertDateAllowedForService,
+  isEmergencySlotTN,
+} from "@/lib/calendar-rules";
 import {
   connectDepositMetadata,
   hourlyDispatchMetadata,
@@ -230,7 +233,19 @@ export async function POST(req: Request) {
         : await getLocale();
     const dictForParse = getDictionary(bodyLocale);
     const data = createCheckoutBodySchema(dictForParse).parse(json);
-    const serviceType = data.serviceType as ServiceType;
+    let serviceType = data.serviceType as ServiceType;
+
+    /**
+     * No-socio: si eligió CONNECT_STANDARD pero el slot no es L–V 8am–4pm TN y sí es
+     * emergencia válida (L–V fuera de 8–16 o sáb–dom 8am–4pm), se promueve a EMERGENCY ($1,250).
+     */
+    if (
+      serviceType === "CONNECT_STANDARD" &&
+      data.scheduledAt &&
+      isEmergencySlotTN(data.scheduledAt)
+    ) {
+      serviceType = "EMERGENCY" as ServiceType;
+    }
 
     locale =
       data.locale === "en" || data.locale === "es"
@@ -627,12 +642,23 @@ export async function POST(req: Request) {
     );
   } catch (e) {
     if (e instanceof ServiceDateError) {
-      const msg =
-        e.code === "WEEKDAY_ONLY"
-          ? t(dict, "booking.dateMismatchWeekday")
-          : e.code === "EMERGENCY_WEEKEND_ONLY"
-            ? t(dict, "booking.dateMismatchWeekendNonMember")
-            : t(dict, "booking.dateMismatchWeekendGold");
+      let msg: string;
+      switch (e.code) {
+        case "WEEKDAY_ONLY":
+          msg = t(dict, "booking.dateMismatchWeekday");
+          break;
+        case "CONNECT_WEEKDAY_HOURS_ONLY":
+          msg = t(dict, "booking.dateMismatchWeekdayHours");
+          break;
+        case "PUBLIC_SLOT_OUT_OF_HOURS":
+          msg = t(dict, "booking.dateMismatchOutsideHours");
+          break;
+        case "WEEKEND_EMERGENCY_GOLD":
+          msg = t(dict, "booking.dateMismatchWeekendGold");
+          break;
+        default:
+          msg = t(dict, "booking.dateMismatchWeekday");
+      }
       return NextResponse.json({ error: msg }, { status: 400 });
     }
     if (e instanceof z.ZodError) {

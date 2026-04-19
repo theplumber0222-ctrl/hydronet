@@ -250,7 +250,7 @@ const es = {
     datetimeHintHourly:
       "Solo lunes a viernes (hora Tennessee).",
     datetimeHintSingleVisit:
-      "Hora Tennessee — la tarifa sigue el día que elija (resumen abajo).",
+      "Hora Tennessee — $950 lun–vie 8am–4pm; $1,250 fuera de ese horario entre semana o sáb–dom 8am–4pm (resumen abajo).",
     chargeSummary: "Resumen de cobro (estimado en Stripe)",
     serviceLine: "Servicio:",
     hourlyRateLine: "Despacho + 1.ª hora (hoy):",
@@ -262,8 +262,9 @@ const es = {
     standardTotal: "Total del servicio:",
     standardWeekday: "lun–vie",
     standardOffHours: "fuera de horario estándar",
-    rateBandWeekday: "Lun–vie · total $950",
-    rateBandWeekend: "Sáb–dom · total $1,250",
+    rateBandWeekday: "Lun–vie 8am–4pm · total $950",
+    rateBandWeekend: "Sáb–dom 8am–4pm · total $1,250",
+    rateBandEmergencyWeekday: "Lun–vie fuera de 8am–4pm · total $1,250",
     reserveToday: "Dispatch fee hoy:",
     balanceDue: "Saldo pendiente:",
     depositNoteStandard:
@@ -306,12 +307,16 @@ const es = {
       "Solo lunes a viernes (hora Tennessee).",
     dateMismatchWeekendNonMember:
       "El servicio de fin de semana ($1,250) solo aplica sábado y domingo (hora Tennessee).",
+    dateMismatchWeekdayHours:
+      "La tarifa estándar ($950) es solo lunes a viernes de 8am a 4pm (hora Tennessee).",
+    dateMismatchOutsideHours:
+      "Esta hora está fuera de las ventanas públicas de reserva (lun–vie 8am–4pm o sáb–dom 8am–4pm, hora Tennessee).",
     dateMismatchWeekendGold:
       "Socio Gold — Emergencia fin de semana: solo sábado o domingo (horario Tennessee).",
     services: {
       drainage: {
         label: "Jetting / limpieza de drenajes",
-        hint: "Hidrolavado de alta presión en líneas de drenaje (comercial y residencial). Los $195 del Dispatch fee aseguran la visita y el despliegue del equipo; se acreditan al total del servicio ($950 lun–vie o $1,250 sáb–dom).",
+        hint: "Hidrolavado de alta presión en líneas de drenaje (comercial y residencial). Los $195 del Dispatch fee aseguran la visita y el despliegue del equipo; se acreditan al total del servicio ($950 lun–vie 8am–4pm; $1,250 fuera de ese horario entre semana o sáb–dom 8am–4pm).",
       },
       water_heater: {
         label:

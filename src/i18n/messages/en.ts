@@ -250,7 +250,7 @@ const en = {
     datetimeHintHourly:
       "Monday–Friday only (Tennessee time).",
     datetimeHintSingleVisit:
-      "Tennessee time — rate follows the day you pick (summary below).",
+      "Tennessee time — $950 Mon–Fri 8am–4pm; $1,250 evenings (after 4pm), early mornings (before 8am), and Sat–Sun 8am–4pm (summary below).",
     chargeSummary: "Charge summary (estimated in Stripe)",
     serviceLine: "Service:",
     hourlyRateLine: "Dispatch + 1st hour (today):",
@@ -262,8 +262,9 @@ const en = {
     standardTotal: "Service total:",
     standardWeekday: "Mon–Fri",
     standardOffHours: "outside standard hours",
-    rateBandWeekday: "Mon–Fri · $950 total",
-    rateBandWeekend: "Sat–Sun · $1,250 total",
+    rateBandWeekday: "Mon–Fri 8am–4pm · $950 total",
+    rateBandWeekend: "Sat–Sun 8am–4pm · $1,250 total",
+    rateBandEmergencyWeekday: "Mon–Fri outside 8am–4pm · $1,250 total",
     reserveToday: "Dispatch fee today:",
     balanceDue: "Balance due:",
     depositNoteStandard:
@@ -305,12 +306,16 @@ const en = {
       "Monday–Friday only (Tennessee time).",
     dateMismatchWeekendNonMember:
       "The $1,250 weekend service applies to Saturday and Sunday only (Tennessee time).",
+    dateMismatchWeekdayHours:
+      "Standard rate ($950) is Monday–Friday 8am–4pm only (Tennessee time).",
+    dateMismatchOutsideHours:
+      "This time is outside public booking windows (Mon–Fri 8am–4pm or Sat–Sun 8am–4pm, Tennessee time).",
     dateMismatchWeekendGold:
       "Gold member — weekend emergency: Saturday or Sunday only (Tennessee time).",
     services: {
       drainage: {
         label: "Jetting / drain cleaning",
-        hint: "High-pressure drain line cleaning (commercial and residential). The $195 Dispatch fee confirms your visit and equipment mobilization; it is credited toward your service total ($950 Mon–Fri or $1,250 Sat–Sun).",
+        hint: "High-pressure drain line cleaning (commercial and residential). The $195 Dispatch fee confirms your visit and equipment mobilization; it is credited toward your service total ($950 Mon–Fri 8am–4pm; $1,250 Mon–Fri outside those hours or Sat–Sun 8am–4pm).",
       },
       water_heater: {
         label:
