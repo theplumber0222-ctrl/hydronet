@@ -20,7 +20,7 @@ const en = {
   },
   stripeUi: {
     checkoutDepositSummary:
-      "Non-Gold: a $195 Dispatch fee applies to schedule (credited toward the service total); balance on service date. Gold: subscription only (no $195 Dispatch fee).",
+      "Non-Gold: pay the $195 Dispatch fee to schedule (credited toward the service total); remaining balance on the service day when the visit is done. Cancellations: 24+ hours’ notice. Gold: subscription (no $195 Dispatch fee for eligible visits).",
     flatFeeTitle: "Dispatch fee: $195",
     dispatchFeePurpose:
       "This is our standard non-member reservation charge. It confirms your appointment, covers travel to your location, and the initial technical diagnosis.",
@@ -239,16 +239,18 @@ const en = {
     jettingPricingTier1250:
       "$1,250 total — Mon–Fri before 8am or after 4pm, or Sat–Sun 8am–4pm (Tennessee time).",
     jettingPricingDispatchNote:
-      "You pay the $195 Dispatch fee in Stripe today; it is credited toward whichever total applies. The balance shown below is due when the visit is completed.",
+      "To schedule the appointment you pay the $195 Dispatch fee in Stripe now. That fee is credited toward your service total ($950 or $1,250). The remaining balance is due on the day of service when the visit is finished — not at booking.",
     jettingPricingPickDate:
       "Choose a date and time below — the summary will show the exact total for your slot.",
+    cancellationNotice24h:
+      "Cancellations require at least 24 hours advance notice. Details: Cancellations & refunds policy.",
     hourlyBox:
-      "Specialized technical work under IPC 2018. You pay the $195 Dispatch fee to confirm the visit; it covers dispatch and your first hour. Additional hours are $150 on site.",
+      "Specialized technical work under IPC 2018. You pay the $195 Dispatch fee now to schedule; it covers dispatch and your first hour. Additional hours are $150 on site when the work is completed. Cancellations require at least 24 hours advance notice.",
     goldMemberBanner:
       "We see an active HydroNet Gold membership on this account. Book through the member page — the $195 Dispatch fee does not apply to eligible Gold visits.",
     goldMemberBannerCta: "Open member booking",
     dispatchNoShowPolicy:
-      "The $195 Dispatch fee is not refundable if you cancel when the technician has already arrived on site.",
+      "24-hour advance notice is required for standard cancellations. The $195 Dispatch fee may not be refundable if you cancel with less than 24 hours’ notice or after the technician has been dispatched, per policy.",
     businessName: "Home or business name",
     address: "Address",
     phone: "Phone",
@@ -280,8 +282,10 @@ const en = {
     rateBandEmergencyWeekday: "Mon–Fri outside 8am–4pm · $1,250 total",
     reserveToday: "Dispatch fee today:",
     balanceDue: "Balance due:",
+    balanceDueTiming:
+      "Payable when the visit is completed on the scheduled service day (not when you book).",
     depositNoteStandard:
-      "Dispatch fee: $195. Cancellation requires at least 24 hours notice unless stated otherwise below. Refund rules: Cancellations & refunds.",
+      "Today you only pay the $195 Dispatch fee to reserve the appointment. The rest of the service total is due on the service day when work is completed. Cancellations need at least 24 hours’ advance notice unless our policy says otherwise. Full rules: Cancellations & refunds.",
     hourlyLegal:
       "Dispatch fee ($195) covers dispatch and your first hour; additional hours $150 on site. Refunds: Cancellations & refunds.",
     termsCheckbox:
@@ -289,7 +293,7 @@ const en = {
     termsLink: "Terms of Service",
     refundsLink: "Cancellations & refunds policy",
     submitPay: "Secure booking with Stripe",
-    submitPayServiceFee: "Pay Dispatch fee ($195)",
+    submitPayServiceFee: "Pay $195 Dispatch fee to schedule (balance on service day)",
     submitPayHourly: "Continue to checkout (min. 1 hr)",
     submitting: "Redirecting to secure payment…",
     cancelChoosePlan: "Cancel and choose another plan",

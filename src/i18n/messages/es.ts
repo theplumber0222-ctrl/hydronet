@@ -21,7 +21,7 @@ const es = {
   },
   stripeUi: {
     checkoutDepositSummary:
-      "No Gold: Dispatch fee de $195 para agendar (se acredita al total del servicio); saldo el día del servicio. Gold: suscripción (sin Dispatch fee no socio).",
+      "No Gold: paga el Dispatch fee $195 para agendar (se acredita al total); saldo restante el día del servicio al terminar la visita. Cancelaciones: aviso mínimo 24 h. Gold: suscripción (sin Dispatch fee no socio en visitas elegibles).",
     flatFeeTitle: "Dispatch fee: $195",
     dispatchFeePurpose:
       "Cargo estándar de reserva para quien no es socio Gold: confirma la cita, cubre el traslado y el diagnóstico técnico inicial.",
@@ -241,16 +241,18 @@ const es = {
     jettingPricingTier1250:
       "$1,250 en total — lun–vie antes de 8am o después de 4pm, o sáb–dom 8am–4pm (hora Tennessee).",
     jettingPricingDispatchNote:
-      "Hoy paga el Dispatch fee $195 en Stripe; se acredita al total que corresponda. El saldo indicado abajo se paga al completar la visita.",
+      "Para agendar la cita paga ahora el Dispatch fee de $195 en Stripe. Ese monto se acredita al total del servicio ($950 o $1,250). El saldo restante se cobra el día del servicio al terminar la visita — no al reservar.",
     jettingPricingPickDate:
       "Elija fecha y hora abajo — el resumen mostrará el total exacto para ese horario.",
+    cancellationNotice24h:
+      "Las cancelaciones requieren al menos 24 horas de anticipación. Detalle: política de Cancelaciones y reembolsos.",
     hourlyBox:
-      "Servicios técnicos bajo IPC 2018. Paga el Dispatch fee $195 para confirmar la visita; cubre despacho y primera hora. Las horas siguientes se facturan a $150 en sitio.",
+      "Servicios técnicos bajo IPC 2018. Paga ahora el Dispatch fee $195 para agendar; cubre despacho y primera hora. Las horas siguientes se facturan a $150 en sitio al completar el trabajo. Las cancelaciones requieren al menos 24 horas de anticipación.",
     goldMemberBanner:
       "Detectamos una membresía Gold activa en esta cuenta. Use la reserva de socio: el Dispatch fee de $195 no aplica en visitas elegibles.",
     goldMemberBannerCta: "Ir a reserva de socio",
     dispatchNoShowPolicy:
-      "El Dispatch fee de $195 no es reembolsable si la cancelación ocurre al momento de la llegada del técnico al sitio.",
+      "Se requiere aviso con al menos 24 horas de anticipación para cancelaciones habituales. El Dispatch fee de $195 puede no ser reembolsable si cancela con menos de 24 horas o después de despachar al técnico, según política.",
     businessName: "Nombre de casa o negocio",
     address: "Dirección",
     phone: "Teléfono",
@@ -281,8 +283,10 @@ const es = {
     rateBandEmergencyWeekday: "Lun–vie fuera de 8am–4pm · total $1,250",
     reserveToday: "Dispatch fee hoy:",
     balanceDue: "Saldo pendiente:",
+    balanceDueTiming:
+      "Se paga al finalizar la visita el día del servicio (no al momento de reservar).",
     depositNoteStandard:
-      "Dispatch fee: $195. Cancelación con al menos 24 horas de anticipación, salvo lo indicado abajo. Reembolsos: Cancelaciones y reembolsos.",
+      "Hoy solo paga el Dispatch fee de $195 para reservar la cita. El resto del total del servicio se cobra el día del servicio al completar el trabajo. Las cancelaciones requieren al menos 24 horas de anticipación, salvo lo que indique la política. Reglas completas: Cancelaciones y reembolsos.",
     hourlyLegal:
       "Dispatch fee ($195) cubre despacho y primera hora; horas adicionales $150 en sitio. Reembolsos: Cancelaciones y reembolsos.",
     termsCheckbox:
@@ -290,7 +294,8 @@ const es = {
     termsLink: "Términos de servicio",
     refundsLink: "política de cancelaciones y reembolsos",
     submitPay: "Reserva segura con Stripe",
-    submitPayServiceFee: "Pagar Dispatch fee ($195)",
+    submitPayServiceFee:
+      "Pagar Dispatch fee $195 para agendar (saldo el día del servicio)",
     submitPayHourly: "Continuar al pago (mín. 1 hora)",
     submitting: "Redirigiendo a pago seguro…",
     cancelChoosePlan: "Cancelar y elegir otro plan",

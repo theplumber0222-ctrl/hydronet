@@ -476,6 +476,9 @@ function BookingFormFields() {
             <p className="mt-3 text-[11px] text-slate-400 sm:text-xs">
               {t("booking.jettingPricingDispatchNote")}
             </p>
+            <p className="mt-3 rounded-md border border-amber-600/30 bg-amber-950/20 p-2 text-[11px] font-medium text-amber-100/95 sm:text-xs">
+              {t("booking.cancellationNotice24h")}
+            </p>
             <p className="mt-2 text-[11px] font-medium text-sky-300/95 sm:text-xs">
               {t("booking.jettingPricingPickDate")}
             </p>
@@ -738,6 +741,9 @@ function BookingFormFields() {
                   ${pricePreview.balancePendingUsd.toFixed(2)}
                 </strong>
               </p>
+              <p className="text-[11px] text-slate-400 sm:text-xs">
+                {t("booking.balanceDueTiming")}
+              </p>
               <p className="font-semibold text-sky-200">
                 {t("booking.chargeToday")}
                 {pricePreview.totalChargeUsd.toFixed(2)}
@@ -846,9 +852,13 @@ function BookingFormFields() {
       <button
         type="submit"
         disabled={loading || !canProceedToPayment}
-        className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn-primary w-full text-sm leading-snug disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? t("booking.submitting") : t("booking.submitPayServiceFee")}
+        {loading
+          ? t("booking.submitting")
+          : billingMode === "hourly"
+            ? t("booking.submitPayHourly")
+            : t("booking.submitPayServiceFee")}
       </button>
       <CheckoutCancelPlansLink />
     </form>
