@@ -250,7 +250,7 @@ const en = {
     datetimeHintHourly:
       "Monday–Friday only (Tennessee time).",
     datetimeHintSingleVisit:
-      "Tennessee time — rate follows the day you pick (summary below).",
+      "Tennessee time. Regular Mon-Fri 8am-4pm = $950 · Emergency Mon-Fri after 4pm + Sat-Sun 8am-4pm = $1,250. Rate adjusts to the time slot you pick.",
     chargeSummary: "Charge summary (estimated in Stripe)",
     serviceLine: "Service:",
     hourlyRateLine: "Dispatch + 1st hour (today):",
@@ -262,8 +262,8 @@ const en = {
     standardTotal: "Service total:",
     standardWeekday: "Mon–Fri",
     standardOffHours: "outside standard hours",
-    rateBandWeekday: "Mon–Fri · $950 total",
-    rateBandWeekend: "Sat–Sun · $1,250 total",
+    rateBandWeekday: "Regular Mon-Fri 8am-4pm · $950 total",
+    rateBandWeekend: "Emergency Mon-Fri after 4pm + Sat-Sun 8am-4pm · $1,250 total",
     reserveToday: "Dispatch fee today:",
     balanceDue: "Balance due:",
     depositNoteStandard:
