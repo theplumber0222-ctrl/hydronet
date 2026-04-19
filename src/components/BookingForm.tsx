@@ -420,60 +420,21 @@ function BookingFormFields() {
       </div>
 
       {billingMode === "standard" && (
-        <>
-          <div>
-            <label className="label">{t("booking.serviceLabel")}</label>
-            <select
-              className="input-field"
-              value={catalogId}
-              onChange={(e) => setCatalogId(e.target.value as CatalogId)}
-            >
-              {serviceOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-slate-400">{selectedOption.hint}</p>
-          </div>
-
-          {/* Estructura precios visita única (no socio) — espeja card de planes */}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div
-              className={`rounded-xl border p-4 transition ${
-                serviceType === "CONNECT_STANDARD"
-                  ? "border-sky-500 bg-sky-950/40 ring-2 ring-sky-500/40"
-                  : "border-slate-700 bg-slate-900/30"
-              }`}
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {t("booking.tierRegularLabel")}
-              </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-white">$950</p>
-              <p className="mt-1 text-xs text-slate-400">
-                {t("booking.tierRegularHint")}
-              </p>
-            </div>
-            <div
-              className={`rounded-xl border p-4 transition ${
-                serviceType === "EMERGENCY"
-                  ? "border-amber-500 bg-amber-950/40 ring-2 ring-amber-500/40"
-                  : "border-slate-700 bg-slate-900/30"
-              }`}
-            >
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {t("booking.tierEmergencyLabel")}
-              </p>
-              <p className="mt-1 text-2xl font-bold tabular-nums text-white">$1,250</p>
-              <p className="mt-1 text-xs text-slate-400">
-                {t("booking.tierEmergencyHint")}
-              </p>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500">
-            {t("booking.tierAutoSelectHint")}
-          </p>
-        </>
+        <div>
+          <label className="label">{t("booking.serviceLabel")}</label>
+          <select
+            className="input-field"
+            value={catalogId}
+            onChange={(e) => setCatalogId(e.target.value as CatalogId)}
+          >
+            {serviceOptions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-400">{selectedOption.hint}</p>
+        </div>
       )}
 
       {billingMode === "hourly" && (
