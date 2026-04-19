@@ -416,11 +416,11 @@ function BookingFormFields() {
         <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
           {t("booking.billingMode")}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-1 sm:justify-end">
           <button
             type="button"
             onClick={() => setBillingMode("standard")}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            className={`rounded-lg border px-3 py-2 text-left text-xs font-medium leading-snug transition sm:max-w-[min(100%,20rem)] sm:text-sm ${
               billingMode === "standard"
                 ? "border-sky-500 bg-sky-950/50 text-sky-200"
                 : "border-slate-600 text-slate-400 hover:border-slate-500"
@@ -431,7 +431,7 @@ function BookingFormFields() {
           <button
             type="button"
             onClick={() => setBillingMode("hourly")}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+            className={`rounded-lg border px-3 py-2 text-left text-xs font-medium leading-snug transition sm:max-w-[min(100%,20rem)] sm:text-sm ${
               billingMode === "hourly"
                 ? "border-orange-500 bg-orange-950/40 text-orange-200"
                 : "border-slate-600 text-slate-400 hover:border-slate-500"

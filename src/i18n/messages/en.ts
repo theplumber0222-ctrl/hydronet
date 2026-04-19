@@ -225,9 +225,11 @@ const en = {
   booking: {
     brandBlurb:
       "compliance with the International Plumbing Code (IPC 2018).",
-    billingMode: "Billing mode",
-    standardAppt: "Single visit ($950 / $1,250)",
-    hourlyRate: "Hourly ($150/hr after 1st)",
+    billingMode: "Booking type",
+    standardAppt:
+      "Jetting / drain cleaning — single visit ($950 / $1,250)",
+    hourlyRate:
+      "Hourly plumbing & installation labor ($150/hr after the 1st hour)",
     serviceLabel: "Service type",
     hourlyBox:
       "Specialized technical work under IPC 2018. You pay the $195 Dispatch fee to confirm the visit; it covers dispatch and your first hour. Additional hours are $150 on site.",

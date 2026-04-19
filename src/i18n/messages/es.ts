@@ -226,9 +226,11 @@ const es = {
   },
   booking: {
     brandBlurb: "cumplimiento del International Plumbing Code (IPC 2018).",
-    billingMode: "Modalidad de cobro",
-    standardAppt: "Visita única ($950 / $1,250)",
-    hourlyRate: "Por hora ($150/h tras 1.ª)",
+    billingMode: "Tipo de reserva",
+    standardAppt:
+      "Jetting / limpieza de drenajes — visita única ($950 / $1,250)",
+    hourlyRate:
+      "Plomería por hora — mano de obra ($150/h tras la 1.ª hora)",
     serviceLabel: "Tipo de servicio",
     hourlyBox:
       "Servicios técnicos bajo IPC 2018. Paga el Dispatch fee $195 para confirmar la visita; cubre despacho y primera hora. Las horas siguientes se facturan a $150 en sitio.",
