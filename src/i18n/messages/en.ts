@@ -140,6 +140,7 @@ const en = {
     register: "Create account",
     dashboard: "Gold dashboard",
     tablet: "Tablet · Field service",
+    agenda: "Tablet · Day schedule",
     terms: "Terms of Service",
     privacy: "Privacy",
     refunds: "Cancellations & refunds",
@@ -416,6 +417,17 @@ const en = {
     navEstimates: "Estimates",
     navHistory: "Client history",
     metaNote: "HydroNet Plumbing · HydroNet LLC",
+  },
+  tabletAgenda: {
+    pageTitle: "Today’s schedule · tablet",
+    pageSubtitle:
+      "All bookings for the selected calendar day (Tennessee time). Tap a row for the full job card.",
+    dateLabel: "Day (Tennessee)",
+    dateHelp:
+      "Shows every job scheduled that day — not filtered by technician until assignments exist in the system.",
+    emptyDay: "No bookings for this day.",
+    refresh: "Reload list",
+    navCurrent: "Schedule",
   },
   adminEstimados: {
     pageTitle: "Estimates · tablet",

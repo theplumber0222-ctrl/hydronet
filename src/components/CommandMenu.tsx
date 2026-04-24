@@ -95,6 +95,13 @@ export function CommandMenu() {
       },
       {
         kind: "link",
+        id: "agenda",
+        href: "/admin/agenda",
+        label: t("commandMenu.agenda"),
+        k: "agenda schedule día día tablet",
+      },
+      {
+        kind: "link",
         id: "jobcard",
         href: "/admin/cita",
         label: t("commandMenu.jobCard"),

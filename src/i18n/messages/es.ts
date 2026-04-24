@@ -141,6 +141,7 @@ const es = {
     register: "Crear cuenta",
     dashboard: "Panel Gold",
     tablet: "Tablet · Servicio en sitio",
+    agenda: "Tablet · Agenda del día",
     terms: "Términos de servicio",
     privacy: "Privacidad",
     refunds: "Cancelaciones y reembolsos",
@@ -421,6 +422,17 @@ const es = {
     navEstimates: "Estimados",
     navHistory: "Historial cliente",
     metaNote: "HydroNet Plumbing · HydroNet LLC",
+  },
+  tabletAgenda: {
+    pageTitle: "Agenda del día · tablet",
+    pageSubtitle:
+      "Todas las reservas del día elegido (hora Tennessee). Toque una fila para abrir la ficha completa.",
+    dateLabel: "Día (Tennessee)",
+    dateHelp:
+      "Lista todas las citas de ese día; aún no hay filtro por técnico hasta exista asignación en el sistema.",
+    emptyDay: "No hay reservas para este día.",
+    refresh: "Recargar lista",
+    navCurrent: "Agenda",
   },
   adminEstimados: {
     pageTitle: "Estimados · tablet",
