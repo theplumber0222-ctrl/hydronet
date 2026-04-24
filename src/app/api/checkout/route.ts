@@ -33,6 +33,7 @@ import {
   isValidGooglePlaceId,
   isValidUsPhone,
 } from "@/lib/contact-validation";
+import { getAppUrl } from "@/lib/app-url";
 import { getPublicGoogleMapsApiKey } from "@/lib/google-maps-env";
 import type { Locale } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
@@ -314,10 +315,7 @@ export async function POST(req: Request) {
     const reservationPriceId = getReservationPriceId();
     const monthlyId = getGoldMonthlyPriceId();
     const annualId = getGoldAnnualPriceId();
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ??
-      process.env.NEXT_PUBLIC_BASE_URL ??
-      "http://localhost:3000";
+    const siteUrl = getAppUrl();
     /** Tras pagar: confirmación con `session_id` para referencia / webhook. */
     const checkoutSuccessUrl = `${siteUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
     /** Si el cliente cancela en Stripe: vuelve al formulario de reserva (misma sesión NextAuth en cookie). */
