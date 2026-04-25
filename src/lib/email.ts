@@ -147,6 +147,8 @@ export async function sendServicioReportEmail(params: {
   invoiceSubtotal: number;
   depositCredit: number;
   language: ServicioLanguage;
+  /** Misma referencia que en el PDF, si el técnico la indicó. */
+  bookingReference?: string;
 }): Promise<void> {
   const resend = getResend();
   if (!resend) {
@@ -168,6 +170,11 @@ export async function sendServicioReportEmail(params: {
         ${emailLogoHtml()}
         <p style="margin:0 0 12px;">${escapeHtml(c.emailIntro)}</p>
         <table style="color:#e5e7eb;border-collapse:collapse;margin-top:16px;">
+          ${
+            params.bookingReference?.trim()
+              ? `<tr><td style="padding:6px 12px 6px 0;color:#9ca3af;vertical-align:top;">${escapeHtml(c.pdfBookingRef)}</td><td><code style="font-size:0.95em;word-break:break-all;">${escapeHtml(params.bookingReference.trim())}</code></td></tr>`
+              : ""
+          }
           <tr><td style="padding:6px 12px 6px 0;color:#9ca3af;">${escapeHtml(c.emailRowSubtotal)}</td><td>$${params.invoiceSubtotal.toFixed(2)} USD</td></tr>
           <tr><td style="padding:6px 12px 6px 0;color:#9ca3af;">${escapeHtml(c.emailRowDeposit)}</td><td>-$${params.depositCredit.toFixed(2)} USD</td></tr>
           <tr><td style="padding:6px 12px 6px 0;color:#9ca3af;"><strong>${escapeHtml(c.emailRowTotal)}</strong></td><td><strong>$${params.amountDue.toFixed(2)} USD</strong></td></tr>

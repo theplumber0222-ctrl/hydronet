@@ -103,6 +103,12 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.font("Helvetica").text(data.restaurantName);
     doc.moveDown(0.5);
 
+    if (data.bookingReference?.trim()) {
+      doc.font("Helvetica-Bold").text(c.pdfBookingRef);
+      doc.font("Helvetica").text(data.bookingReference.trim());
+      doc.moveDown(0.5);
+    }
+
     doc.font("Helvetica-Bold").text(c.pdfTechnician);
     doc.font("Helvetica").text(data.technicianName);
     doc.moveDown(0.5);

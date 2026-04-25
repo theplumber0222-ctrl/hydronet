@@ -70,6 +70,7 @@ export async function POST(req: Request) {
   }
 
   const raw = {
+    bookingReference: String(form.get("bookingReference") ?? "").trim(),
     restaurantName: String(form.get("restaurantName") ?? "").trim(),
     clientEmail: String(form.get("clientEmail") ?? "").trim(),
     technicianName: String(form.get("technicianName") ?? "").trim(),
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
   };
 
   const schema = z.object({
+    bookingReference: z.string().max(200).optional().default(""),
     restaurantName: z.string().min(1),
     clientEmail: z.string().email(),
     technicianName: z.string().min(1),
@@ -125,6 +127,7 @@ export async function POST(req: Request) {
 
   const payload = {
     language,
+    bookingReference: parsed.bookingReference || undefined,
     restaurantName: parsed.restaurantName,
     clientEmail: parsed.clientEmail,
     technicianName: parsed.technicianName,
@@ -150,6 +153,7 @@ export async function POST(req: Request) {
       invoiceSubtotal: parsed.invoiceSubtotal,
       depositCredit,
       language,
+      bookingReference: payload.bookingReference,
     });
   } catch (err) {
     console.error(err);

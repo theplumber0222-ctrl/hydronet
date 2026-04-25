@@ -12,6 +12,8 @@ type Block = {
   /** Short label for language toggle */
   langLabel: string;
   navHome: string;
+  /** Enlace a agenda del día (tablet). */
+  navAgenda: string;
   /** Enlace a ficha de cita (tablet). */
   navJobCard: string;
   navEstimates: string;
@@ -60,6 +62,8 @@ type Block = {
   /** PDF */
   pdfTitle: string;
   pdfEstablishment: string;
+  /** Opcional: ID de reserva vinculada al informe */
+  pdfBookingRef: string;
   pdfTechnician: string;
   pdfServiceDate: string;
   pdfChecklistTitle: string;
@@ -90,6 +94,7 @@ type Block = {
 const EN: Block = {
   langLabel: "Language",
   navHome: "← Home",
+  navAgenda: "Day schedule",
   navJobCard: "Job card",
   navEstimates: "Estimates",
   navHistory: "Client history",
@@ -137,6 +142,7 @@ const EN: Block = {
     "The $195 Dispatch fee for non-Gold visits is credited toward your service total. Hourly jobs use a minimum 1-hour charge at checkout. Subject to Tennessee commercial laws and our cancellation policy.",
   pdfTitle: "On-Site Service Report",
   pdfEstablishment: "Establishment",
+  pdfBookingRef: "Booking reference",
   pdfTechnician: "Technician",
   pdfServiceDate: "Service date",
   pdfChecklistTitle: "Internal inspection checklist",
@@ -166,6 +172,7 @@ const EN: Block = {
 const ES: Block = {
   langLabel: "Idioma",
   navHome: "← Inicio",
+  navAgenda: "Agenda del día",
   navJobCard: "Ficha de cita",
   navEstimates: "Estimados",
   navHistory: "Historial cliente",
@@ -214,6 +221,7 @@ const ES: Block = {
     "El Dispatch fee de $195 en visitas no Gold se acredita al total del servicio. Trabajo por hora: mínimo 1 hora en checkout. Sujeto a leyes comerciales de Tennessee y la política de cancelación.",
   pdfTitle: "Reporte de servicio en sitio",
   pdfEstablishment: "Establecimiento",
+  pdfBookingRef: "Referencia de reserva",
   pdfTechnician: "Técnico",
   pdfServiceDate: "Fecha de servicio",
   pdfChecklistTitle: "Lista de verificación interna",

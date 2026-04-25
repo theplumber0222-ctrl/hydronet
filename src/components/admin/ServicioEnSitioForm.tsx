@@ -35,6 +35,7 @@ export function ServicioEnSitioForm() {
 
   const [adminKey, setAdminKey] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
+  const [bookingReference, setBookingReference] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [technicianName, setTechnicianName] = useState("");
   const [serviceDate, setServiceDate] = useState(() => {
@@ -111,6 +112,7 @@ export function ServicioEnSitioForm() {
     const fd = new FormData();
     fd.set("serviceLanguage", serviceLanguage);
     fd.set("restaurantName", restaurantName);
+    fd.set("bookingReference", bookingReference.trim());
     fd.set("clientEmail", clientEmail);
     fd.set("technicianName", technicianName);
     fd.set("serviceDate", serviceDate);
@@ -170,6 +172,9 @@ export function ServicioEnSitioForm() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <Link href="/" className="text-sm text-sky-400 hover:underline">
             {c.navHome}
+          </Link>
+          <Link href="/admin/agenda" className="text-sm text-sky-400 hover:underline">
+            {c.navAgenda}
           </Link>
           <Link href="/admin/cita" className="text-sm text-sky-400 hover:underline">
             {c.navJobCard}
@@ -242,6 +247,22 @@ export function ServicioEnSitioForm() {
             required
             value={restaurantName}
             onChange={(e) => setRestaurantName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">{c.pdfBookingRef}</label>
+          <p className="text-xs text-slate-500">
+            {serviceLanguage === "es"
+              ? "Opcional — ID de reserva (cuid) para vincular el informe."
+              : "Optional — booking ID (cuid) to link this report."}
+          </p>
+          <input
+            className="input-field font-mono text-sm"
+            autoComplete="off"
+            value={bookingReference}
+            onChange={(e) => setBookingReference(e.target.value)}
+            placeholder="clq…"
+            maxLength={200}
           />
         </div>
         <div>
