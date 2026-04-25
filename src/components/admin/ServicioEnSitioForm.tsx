@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
 import {
   clearEntireServicioDraft,
@@ -18,11 +10,6 @@ import {
   persistFullDraft,
   type ServicioDraftV1,
 } from "@/lib/servicio-form-draft";
-import {
-  fileSlotKey,
-  inferMimeFromFilename,
-  tryCanvasJpegDataUrl,
-} from "@/lib/servicio-photo-thumb";
 import {
   buildServicioSuccessMessage,
   servicioReportCopy,
@@ -47,6 +34,27 @@ const STORAGE_ADMIN = "hydronet_servicio_admin_key";
 /** Mínimo USD en Stripe para pago con tarjeta (alineado con API charge). */
 const MIN_CARD_CHARGE_USD = 0.5;
 const DRAFT_SAVE_MS = 450;
+
+/** [TEMP DEBUG iPad Safari] quitar al cerrar el diagnóstico */
+type ServicioPhotoDebugInfo = {
+  onChangeFired: number;
+  lastPickedSide: "before" | "after" | "—";
+  lastChangeAt: string;
+  lastListLength: number;
+  lastFirstName: string;
+  lastFirstType: string;
+  lastFirstSize: string;
+};
+
+const initialPhotoDebug: ServicioPhotoDebugInfo = {
+  onChangeFired: 0,
+  lastPickedSide: "—",
+  lastChangeAt: "—",
+  lastListLength: 0,
+  lastFirstName: "—",
+  lastFirstType: "—",
+  lastFirstSize: "—",
+};
 
 function defaultServiceDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -74,10 +82,6 @@ function parseNonNegativeHours(s: string): number {
 }
 
 export function ServicioEnSitioForm() {
-  /** Un solo input: iOS/Safari a veces no entregan archivos fiables al 2.º de dos inputs. */
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const photoPickSideRef = useRef<"before" | "after">("before");
-
   const [serviceLanguage, setServiceLanguage] =
     useState<ServicioLanguage>("es");
   const c = servicioReportCopy(serviceLanguage);
@@ -101,6 +105,8 @@ export function ServicioEnSitioForm() {
 
   const [photosBefore, setPhotosBefore] = useState<File[]>([]);
   const [photosAfter, setPhotosAfter] = useState<File[]>([]);
+  const [debugInfo, setDebugInfo] =
+    useState<ServicioPhotoDebugInfo>(initialPhotoDebug);
 
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -322,6 +328,7 @@ export function ServicioEnSitioForm() {
     setOtherChargesSubtotal("");
     setPhotosBefore([]);
     setPhotosAfter([]);
+    setDebugInfo(initialPhotoDebug);
     setError(null);
   }, []);
 
@@ -332,22 +339,62 @@ export function ServicioEnSitioForm() {
     setChargeError(null);
   }, [resetFormForNewReport]);
 
-  const onPhotoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onBeforeFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
-    if (!list?.length) return;
-    const add = (prev: File[]) =>
-      [...prev, ...Array.from(list)].slice(0, 6);
-    if (photoPickSideRef.current === "before") {
-      setPhotosBefore(add);
-    } else {
-      setPhotosAfter(add);
+    const n = list?.length ?? 0;
+    const first = n > 0 && list ? list[0] : null;
+    setDebugInfo((prev) => ({
+      ...prev,
+      onChangeFired: prev.onChangeFired + 1,
+      lastPickedSide: "before",
+      lastChangeAt: new Date().toISOString(),
+      lastListLength: n,
+      lastFirstName: first ? first.name : "(none)",
+      lastFirstType: first ? (first.type || "(type empty)") : "—",
+      lastFirstSize: first != null ? String(first.size) : "—",
+    }));
+    console.log("[HydroNet servicio] file onChange", {
+      side: "before",
+      filesLength: n,
+      firstName: first?.name,
+      firstType: first?.type,
+      firstSize: first?.size,
+    });
+    if (!n) {
+      e.target.value = "";
+      return;
     }
+    setPhotosBefore((prev) => [...prev, ...Array.from(list!)].slice(0, 6));
     e.target.value = "";
   };
 
-  const openPhotoPicker = (side: "before" | "after") => {
-    photoPickSideRef.current = side;
-    photoInputRef.current?.click();
+  const onAfterFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const list = e.target.files;
+    const n = list?.length ?? 0;
+    const first = n > 0 && list ? list[0] : null;
+    setDebugInfo((prev) => ({
+      ...prev,
+      onChangeFired: prev.onChangeFired + 1,
+      lastPickedSide: "after",
+      lastChangeAt: new Date().toISOString(),
+      lastListLength: n,
+      lastFirstName: first ? first.name : "(none)",
+      lastFirstType: first ? (first.type || "(type empty)") : "—",
+      lastFirstSize: first != null ? String(first.size) : "—",
+    }));
+    console.log("[HydroNet servicio] file onChange", {
+      side: "after",
+      filesLength: n,
+      firstName: first?.name,
+      firstType: first?.type,
+      firstSize: first?.size,
+    });
+    if (!n) {
+      e.target.value = "";
+      return;
+    }
+    setPhotosAfter((prev) => [...prev, ...Array.from(list!)].slice(0, 6));
+    e.target.value = "";
   };
 
   async function onSubmit(e: React.FormEvent) {
@@ -672,71 +719,65 @@ export function ServicioEnSitioForm() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2">
-        <input
-          ref={photoInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          className="hidden"
-          onChange={onPhotoInputChange}
-        />
-        <div>
-          <button
-            type="button"
-            onClick={() => openPhotoPicker("before")}
-            className="flex min-h-[5.5rem] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-500/60 bg-sky-950/20 px-4 py-6 text-lg font-bold text-sky-300 transition hover:bg-sky-950/40"
-          >
-            <span className="text-3xl" aria-hidden>
-              📷
-            </span>
-            <span>{c.photosBefore}</span>
-            <span className="text-sm font-normal text-sky-400/80">
-              {c.photosBeforeSub}
-            </span>
-          </button>
-          <PhotoThumbnails
-            key="servicio-photo-thumbs-before"
-            files={photosBefore}
-            onRemove={setPhotosBefore}
-            removeAria={c.removePhotoAria}
-            tone="before"
-            caption={c.photoCountInline}
-            previewHint={c.photoPreviewUnavailable}
-            typeLabel={c.photoTypeLabel}
-            indexLabel={c.photoIndexLabel}
-            openPreviewAria={c.openPhotoPreviewAria}
-            closePhotoPreview={c.closePhotoPreview}
-          />
+      <section className="space-y-4">
+        <p className="text-xs text-amber-200/90">
+          [DEBUG] Captura temporal — inputs visibles, sin lightbox (quitar al
+          cerrar diagnóstico)
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-sky-500/40 bg-slate-900/50 p-3">
+            <p className="mb-1 text-sm font-semibold text-sky-300">
+              {c.photosBefore}
+            </p>
+            <p className="mb-2 text-xs text-slate-500">{c.photosBeforeSub}</p>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onBeforeFileInputChange}
+              className="mb-2 block w-full max-w-full text-sm text-slate-200 file:mr-2 file:rounded file:border-0 file:bg-sky-700 file:px-2 file:py-1.5"
+            />
+            <SimplePhotoNameList
+              files={photosBefore}
+              onRemove={setPhotosBefore}
+              removeAria={c.removePhotoAria}
+            />
+          </div>
+          <div className="rounded-xl border border-orange-500/40 bg-slate-900/50 p-3">
+            <p className="mb-1 text-sm font-semibold text-orange-300">
+              {c.photosAfter}
+            </p>
+            <p className="mb-2 text-xs text-slate-500">{c.photosAfterSub}</p>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={onAfterFileInputChange}
+              className="mb-2 block w-full max-w-full text-sm text-slate-200 file:mr-2 file:rounded file:border-0 file:bg-orange-800 file:px-2 file:py-1.5"
+            />
+            <SimplePhotoNameList
+              files={photosAfter}
+              onRemove={setPhotosAfter}
+              removeAria={c.removePhotoAria}
+            />
+          </div>
         </div>
-        <div>
-          <button
-            type="button"
-            onClick={() => openPhotoPicker("after")}
-            className="flex min-h-[5.5rem] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-500/60 bg-orange-950/20 px-4 py-6 text-lg font-bold text-orange-300 transition hover:bg-orange-950/40"
-          >
-            <span className="text-3xl" aria-hidden>
-              📷
-            </span>
-            <span>{c.photosAfter}</span>
-            <span className="text-sm font-normal text-orange-400/80">
-              {c.photosAfterSub}
-            </span>
-          </button>
-          <PhotoThumbnails
-            key="servicio-photo-thumbs-after"
-            files={photosAfter}
-            onRemove={setPhotosAfter}
-            removeAria={c.removePhotoAria}
-            tone="after"
-            caption={c.photoCountInline}
-            previewHint={c.photoPreviewUnavailable}
-            typeLabel={c.photoTypeLabel}
-            indexLabel={c.photoIndexLabel}
-            openPreviewAria={c.openPhotoPreviewAria}
-            closePhotoPreview={c.closePhotoPreview}
-          />
+        <div
+          className="rounded-lg border border-amber-500/50 bg-amber-950/30 p-3 font-mono text-xs text-amber-100"
+          data-debug="servicio-photo"
+        >
+          <p className="mb-2 font-sans text-sm font-bold text-amber-200">
+            Photo state (debug)
+          </p>
+          <p>before count: {photosBefore.length}</p>
+          <p>after count: {photosAfter.length}</p>
+          <p>onChange fired (total): {debugInfo.onChangeFired}</p>
+          <p>last picked side: {debugInfo.lastPickedSide}</p>
+          <p>last change at: {debugInfo.lastChangeAt}</p>
+          <p>last list length: {debugInfo.lastListLength}</p>
+          <p>last first name: {debugInfo.lastFirstName}</p>
+          <p>last first type: {debugInfo.lastFirstType}</p>
+          <p>last first size: {debugInfo.lastFirstSize}</p>
         </div>
       </section>
 
@@ -923,225 +964,42 @@ export function ServicioEnSitioForm() {
   );
 }
 
-function PhotoThumbnails({
+/** [TEMP DEBUG] lista mínima de nombres — sin miniaturas */
+function SimplePhotoNameList({
   files,
   onRemove,
   removeAria,
-  tone,
-  caption,
-  previewHint,
-  typeLabel,
-  indexLabel,
-  openPreviewAria,
-  closePhotoPreview,
 }: {
   files: File[];
   onRemove: React.Dispatch<React.SetStateAction<File[]>>;
   removeAria: string;
-  tone: "before" | "after";
-  caption: (n: number) => string;
-  previewHint: string;
-  typeLabel: string;
-  indexLabel: (i: number, total: number) => string;
-  openPreviewAria: string;
-  closePhotoPreview: string;
 }) {
-  const filesKey = useMemo(
-    () =>
-      files
-        .map(
-          (f, i) =>
-            `${i}:${f.name}\0${f.size}\0${f.lastModified}\0${f.type || inferMimeFromFilename(f.name) || ""}`,
-        )
-        .join("|"),
-    [files],
-  );
-
-  const filesRef = useRef(files);
-  filesRef.current = files;
-
-  const [blobUrls, setBlobUrls] = useState<string[]>([]);
-  const [canvasJpegs, setCanvasJpegs] = useState<(string | null)[]>([]);
-  const [blobLoadFailed, setBlobLoadFailed] = useState<boolean[]>([]);
-  const [canvasDecodeDone, setCanvasDecodeDone] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
-
-  useLayoutEffect(() => {
-    setLightbox(null);
-    const list = filesRef.current;
-    if (list.length === 0) {
-      setBlobUrls([]);
-      setCanvasJpegs([]);
-      setBlobLoadFailed([]);
-      setCanvasDecodeDone(false);
-      return;
-    }
-    const next = list.map((f) => URL.createObjectURL(f));
-    setBlobUrls(next);
-    setCanvasJpegs(list.map(() => null));
-    setBlobLoadFailed(list.map(() => false));
-    setCanvasDecodeDone(false);
-
-    let cancelled = false;
-    (async () => {
-      const jpegs = await Promise.all(
-        list.map((f) => tryCanvasJpegDataUrl(f, 200, 0.82)),
-      );
-      if (!cancelled) {
-        setCanvasJpegs(jpegs);
-        setCanvasDecodeDone(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      next.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, [filesKey]);
-
-  useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightbox(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [lightbox]);
-
-  if (files.length === 0) return null;
-  const border =
-    tone === "before" ? "border-sky-500/50" : "border-orange-500/50";
-  const phTint =
-    tone === "before" ? "bg-sky-950/60" : "bg-orange-950/60";
-  const countLine = caption(files.length);
-
+  if (files.length === 0) {
+    return <p className="text-xs text-slate-500">(sin archivos)</p>;
+  }
   return (
-    <>
-    <div className="mt-3">
-      <p className="mb-2 text-sm font-medium text-slate-300">
-        {countLine}
-      </p>
-      <ul className="flex flex-wrap gap-2" aria-label={countLine}>
-        {files.map((f, i) => {
-          const mime =
-            f.type?.trim() ||
-            inferMimeFromFilename(f.name) ||
-            "—";
-          const jpg = canvasJpegs[i] ?? null;
-          const burl = blobUrls[i];
-          const useBlob = !jpg && Boolean(burl) && !blobLoadFailed[i];
-          const hasDisplay = Boolean(jpg) || (Boolean(burl) && !blobLoadFailed[i]);
-          const showNoThumbHint = canvasDecodeDone && !hasDisplay;
-          const previewTarget =
-            burl && !blobLoadFailed[i] ? burl : jpg ?? burl ?? null;
-          const canOpenPreview = Boolean(previewTarget);
-
-          return (
-            <li
-              key={fileSlotKey(f, i)}
-              className={`relative h-20 w-20 touch-manipulation overflow-hidden rounded-lg border ${border} ${phTint} shadow-inner ${
-                canOpenPreview ? "cursor-pointer" : "cursor-default"
-              }`}
-            >
-              <div
-                className="absolute inset-0 z-0 flex flex-col justify-between gap-0.5 p-1.5"
-                aria-hidden
-              >
-                <span className="line-clamp-1 text-center text-[8px] font-medium leading-tight text-slate-200">
-                  {indexLabel(i, files.length)}
-                </span>
-                <span
-                  className="line-clamp-2 min-h-0 flex-1 break-all text-left text-[7px] leading-tight text-slate-300/95"
-                  title={f.name}
-                >
-                  {f.name || "—"}
-                </span>
-                <span className="line-clamp-1 text-left text-[7px] text-slate-400">
-                  {typeLabel}: {mime}
-                </span>
-                {showNoThumbHint ? (
-                  <span className="line-clamp-2 text-left text-[6.5px] leading-tight text-amber-200/90">
-                    {previewHint}
-                  </span>
-                ) : null}
-              </div>
-              {jpg ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={jpg}
-                  alt=""
-                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
-                />
-              ) : useBlob && burl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- blob: URL
-                <img
-                  src={burl}
-                  alt=""
-                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
-                  onError={() => {
-                    setBlobLoadFailed((prev) => {
-                      const n = [...prev];
-                      n[i] = true;
-                      return n;
-                    });
-                  }}
-                />
-              ) : null}
-              {canOpenPreview ? (
-                <button
-                  type="button"
-                  className="absolute inset-0 z-[25] m-0 min-h-0 min-w-0 touch-manipulation border-0 bg-transparent p-0"
-                  onClick={() => setLightbox(previewTarget!)}
-                  aria-label={`${openPreviewAria} — ${f.name || "image"}`}
-                />
-              ) : null}
-              <button
-                type="button"
-                className="absolute right-0 top-0 z-30 touch-manipulation rounded-bl bg-black/60 px-1.5 text-sm font-bold leading-tight text-red-200 hover:bg-black/80"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemove((prev) => prev.filter((_, j) => j !== i));
-                }}
-                aria-label={removeAria}
-              >
-                ×
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-    {lightbox && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label={openPreviewAria}
-            onClick={() => setLightbox(null)}
+    <ul className="mt-1 space-y-1 text-xs text-slate-300">
+      {files.map((f, i) => (
+        <li
+          key={`${f.name}-${i}-${f.size}-${f.lastModified}`}
+          className="flex items-center justify-between gap-1"
+        >
+          <span className="min-w-0 break-all">
+            {f.name}{" "}
+            <span className="text-slate-500">
+              ({f.size} B, {f.type || "no type"})
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => onRemove((prev) => prev.filter((_, j) => j !== i))}
+            className="shrink-0 touch-manipulation text-red-300"
+            aria-label={removeAria}
           >
-            <button
-              type="button"
-              className="absolute right-2 top-2 z-10 min-h-11 min-w-11 touch-manipulation rounded-lg bg-slate-800/90 px-3 text-2xl leading-none text-slate-100"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightbox(null);
-              }}
-              aria-label={closePhotoPreview}
-            >
-              ×
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={lightbox}
-              alt=""
-              className="max-h-[90dvh] max-w-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>,
-          document.body,
-        )
-      : null}
-    </>
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
