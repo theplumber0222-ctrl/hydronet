@@ -32,13 +32,19 @@ function generateReportId(): string {
   return `srv${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Límite por foto: `Promise.race` con timeout evita `blobUpload` colgado sin red visible. */
-const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 20_000;
+/**
+ * Límite por foto para el flujo completo de `upload()` (token vía
+ * /api/.../photo-upload + subida de bytes a almacenamiento Vercel Blob). En
+ * iPad / red móvil el segundo tramo puede tardar más de 20 s sin ser un fallo;
+ * 20s provocaba falsos “no respondió” aun con POST 200 al token.
+ * Sigue evitando quedarse colgado para siempre si la promesa nunca resuelve.
+ */
+const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 120_000;
 
 /**
- * Cada `blobUpload` compite con un timeout: si a los 20s no hay respuesta, se
- * aborta la subida y se rechaza con mensaje claro (el `finally` de onSubmit
- * restaura el botón).
+ * Cada `blobUpload` compite con un timeout: sin respuesta en ese tiempo, se
+ * aborta y se rechaza con mensaje claro (el `finally` de onSubmit restaura el
+ * botón).
  */
 async function blobUploadWithTimeout(
   pathname: string,
