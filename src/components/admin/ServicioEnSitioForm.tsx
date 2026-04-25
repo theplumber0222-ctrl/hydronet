@@ -16,6 +16,7 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
+import { compressServicioPhotoToJpeg } from "@/lib/servicio-photo-compress";
 import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
 
 type UploadedPhotoRef = {
@@ -24,17 +25,6 @@ type UploadedPhotoRef = {
   contentType: string;
   size: number;
 };
-
-function extFromMime(mime: string): string {
-  const m = (mime || "").toLowerCase();
-  if (m === "image/jpeg" || m === "image/jpg") return "jpg";
-  if (m === "image/png") return "png";
-  if (m === "image/webp") return "webp";
-  if (m === "image/heic") return "heic";
-  if (m === "image/heif") return "heif";
-  if (m === "image/gif") return "gif";
-  return "bin";
-}
 
 function generateReportId(): string {
   const c = globalThis.crypto;
@@ -102,33 +92,72 @@ function servicioSubmitStepLabel(
   return "Enviando reporte…";
 }
 
+type PhotoPhase = {
+  side: "before" | "after";
+  index0: number;
+  total: number;
+  phase: "compress" | "upload";
+};
+
+function servicioPhotoProgressLabel(
+  lang: ServicioLanguage,
+  p: PhotoPhase,
+): string {
+  const n = p.index0 + 1;
+  const t = p.total;
+  const sideEN = p.side === "before" ? "before" : "after";
+  const sideES = p.side === "before" ? "antes" : "después";
+  if (lang === "en") {
+    if (p.phase === "compress") {
+      return `Optimizing photo ${n}/${t} (${sideEN})…`;
+    }
+    return `Uploading photo ${n}/${t} (${sideEN})…`;
+  }
+  if (p.phase === "compress") {
+    return `Comprimiendo foto ${n}/${t} (${sideES})…`;
+  }
+  return `Subiendo foto ${n}/${t} (${sideES})…`;
+}
+
 /**
- * Sube las fotos de un lado directamente a Vercel Blob desde el navegador.
- * Devuelve las refs que luego van en el JSON al endpoint del reporte (ya
- * sin pasar por el body del POST principal).
+ * Comprime a JPEG (canvas) y sube a Vercel Blob. Las refs reflejan el archivo
+ * optimizado, no el original.
  */
 async function uploadPhotoSideDirect(
   side: "before" | "after",
   files: File[],
   reportId: string,
   adminKey: string,
+  onPhotoPhase?: (p: PhotoPhase) => void,
 ): Promise<UploadedPhotoRef[]> {
   const out: UploadedPhotoRef[] = [];
   for (let i = 0; i < files.length; i++) {
     const f = files[i];
-    const ext = extFromMime(f.type);
-    const path = `servicio-reports/${reportId}/${side}/${String(i).padStart(2, "0")}.${ext}`;
-    const result = await blobUploadWithTimeout(path, f, {
+    onPhotoPhase?.({ side, index0: i, total: files.length, phase: "compress" });
+    let optimized: File;
+    try {
+      optimized = await compressServicioPhotoToJpeg(f);
+    } catch (optErr) {
+      const name = f.name || "foto";
+      throw new Error(
+        optErr instanceof Error
+          ? `${optErr.message} (${name})`
+          : `No se pudo optimizar la imagen. (${name})`,
+      );
+    }
+    onPhotoPhase?.({ side, index0: i, total: files.length, phase: "upload" });
+    const path = `servicio-reports/${reportId}/${side}/${String(i).padStart(2, "0")}.jpg`;
+    const result = await blobUploadWithTimeout(path, optimized, {
       access: "public",
       handleUploadUrl: "/api/admin/servicio/photo-upload",
-      contentType: f.type || "image/jpeg",
+      contentType: "image/jpeg",
       headers: adminKey ? { "x-hydronet-admin-key": adminKey } : undefined,
     });
     out.push({
       url: result.url,
       pathname: result.pathname,
-      contentType: f.type || "image/jpeg",
-      size: f.size,
+      contentType: "image/jpeg",
+      size: optimized.size,
     });
   }
   return out;
@@ -564,6 +593,10 @@ export function ServicioEnSitioForm() {
           photosBefore,
           reportId,
           key,
+          (p) =>
+            setSubmitStep(
+              servicioPhotoProgressLabel(serviceLanguage, p),
+            ),
         );
         setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "after"));
         photosAfterRefs = await uploadPhotoSideDirect(
@@ -571,6 +604,10 @@ export function ServicioEnSitioForm() {
           photosAfter,
           reportId,
           key,
+          (p) =>
+            setSubmitStep(
+              servicioPhotoProgressLabel(serviceLanguage, p),
+            ),
         );
       } catch (uploadErr) {
         console.error("[servicio] photo upload failed", uploadErr);
