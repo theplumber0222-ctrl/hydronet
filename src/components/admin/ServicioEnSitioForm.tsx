@@ -1,8 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
+import {
+  clearEntireServicioDraft,
+  loadDraftFromLocalStorage,
+  loadPhotoSide,
+  persistFullDraft,
+  type ServicioDraftV1,
+} from "@/lib/servicio-form-draft";
+import {
+  fileSlotKey,
+  inferMimeFromFilename,
+  tryCanvasJpegDataUrl,
+} from "@/lib/servicio-photo-thumb";
 import {
   buildServicioSuccessMessage,
   servicioReportCopy,
@@ -26,6 +46,11 @@ function checklistTitle(
 const STORAGE_ADMIN = "hydronet_servicio_admin_key";
 /** Mínimo USD en Stripe para pago con tarjeta (alineado con API charge). */
 const MIN_CARD_CHARGE_USD = 0.5;
+const DRAFT_SAVE_MS = 450;
+
+function defaultServiceDateString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 function parseMoneyField(s: string): number {
   const t = s.trim().replace(",", ".");
@@ -49,8 +74,9 @@ function parseNonNegativeHours(s: string): number {
 }
 
 export function ServicioEnSitioForm() {
-  const beforeInputRef = useRef<HTMLInputElement>(null);
-  const afterInputRef = useRef<HTMLInputElement>(null);
+  /** Un solo input: iOS/Safari a veces no entregan archivos fiables al 2.º de dos inputs. */
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const photoPickSideRef = useRef<"before" | "after">("before");
 
   const [serviceLanguage, setServiceLanguage] =
     useState<ServicioLanguage>("es");
@@ -61,10 +87,7 @@ export function ServicioEnSitioForm() {
   const [bookingReference, setBookingReference] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [technicianName, setTechnicianName] = useState("");
-  const [serviceDate, setServiceDate] = useState(() => {
-    const d = new Date();
-    return d.toISOString().slice(0, 10);
-  });
+  const [serviceDate, setServiceDate] = useState(defaultServiceDateString);
   const [checklist, setChecklist] = useState<Record<ChecklistKey, string>>({
     airGap: "pass",
     handSink: "pass",
@@ -87,14 +110,72 @@ export function ServicioEnSitioForm() {
   const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(
     null,
   );
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const s = sessionStorage.getItem(STORAGE_ADMIN);
-      if (s) setAdminKey(s);
-    } catch {
-      /* ignore */
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const t = loadDraftFromLocalStorage();
+        const beforeFiles = await loadPhotoSide("before");
+        const afterFiles = await loadPhotoSide("after");
+        if (cancelled) return;
+        if (t?.v === 1) {
+          if (t.serviceLanguage === "en" || t.serviceLanguage === "es")
+            setServiceLanguage(t.serviceLanguage);
+          if (t.adminKey != null) {
+            setAdminKey(t.adminKey);
+            if (t.adminKey.trim()) {
+              try {
+                sessionStorage.setItem(STORAGE_ADMIN, t.adminKey.trim());
+              } catch {
+                /* ignore */
+              }
+            }
+          } else {
+            try {
+              const s = sessionStorage.getItem(STORAGE_ADMIN);
+              if (s) setAdminKey(s);
+            } catch {
+              /* ignore */
+            }
+          }
+          if (t.restaurantName != null) setRestaurantName(t.restaurantName);
+          if (t.bookingReference != null) setBookingReference(t.bookingReference);
+          if (t.clientEmail != null) setClientEmail(t.clientEmail);
+          if (t.technicianName != null) setTechnicianName(t.technicianName);
+          if (t.serviceDate != null) setServiceDate(t.serviceDate);
+          if (t.checklist) setChecklist(t.checklist);
+          if (t.notes != null) setNotes(t.notes);
+          if (t.laborHours != null) setLaborHours(t.laborHours);
+          if (t.materialsSubtotal != null) setMaterialsSubtotal(t.materialsSubtotal);
+          if (t.partsSubtotal != null) setPartsSubtotal(t.partsSubtotal);
+          if (t.otherChargesSubtotal != null)
+            setOtherChargesSubtotal(t.otherChargesSubtotal);
+        } else {
+          try {
+            const s = sessionStorage.getItem(STORAGE_ADMIN);
+            if (s) setAdminKey(s);
+          } catch {
+            /* ignore */
+          }
+        }
+        if (beforeFiles.length) setPhotosBefore(beforeFiles);
+        if (afterFiles.length) setPhotosAfter(afterFiles);
+      } catch {
+        try {
+          const s = sessionStorage.getItem(STORAGE_ADMIN);
+          if (s) setAdminKey(s);
+        } catch {
+          /* ignore */
+        }
+      } finally {
+        if (!cancelled) setDraftHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -114,6 +195,54 @@ export function ServicioEnSitioForm() {
       );
     }
   }, []);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    const draft: ServicioDraftV1 = {
+      v: 1,
+      serviceLanguage,
+      adminKey,
+      restaurantName,
+      bookingReference,
+      clientEmail,
+      technicianName,
+      serviceDate,
+      checklist,
+      notes,
+      laborHours,
+      materialsSubtotal,
+      partsSubtotal,
+      otherChargesSubtotal,
+    };
+    const id = setTimeout(() => {
+      void persistFullDraft(draft, photosBefore, photosAfter);
+      if (adminKey.trim()) {
+        try {
+          sessionStorage.setItem(STORAGE_ADMIN, adminKey.trim());
+        } catch {
+          /* ignore */
+        }
+      }
+    }, DRAFT_SAVE_MS);
+    return () => clearTimeout(id);
+  }, [
+    draftHydrated,
+    serviceLanguage,
+    adminKey,
+    restaurantName,
+    bookingReference,
+    clientEmail,
+    technicianName,
+    serviceDate,
+    checklist,
+    notes,
+    laborHours,
+    materialsSubtotal,
+    partsSubtotal,
+    otherChargesSubtotal,
+    photosBefore,
+    photosAfter,
+  ]);
 
   const laborH = parseNonNegativeHours(laborHours);
   const laborSubtotal = round2(laborH * HOURLY_PLUMBING_RATE_USD);
@@ -138,18 +267,87 @@ export function ServicioEnSitioForm() {
     }
   }, [adminKey]);
 
-  const onBeforeFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const buildDraft = useCallback((): ServicioDraftV1 => {
+    return {
+      v: 1,
+      serviceLanguage,
+      adminKey,
+      restaurantName,
+      bookingReference,
+      clientEmail,
+      technicianName,
+      serviceDate,
+      checklist,
+      notes,
+      laborHours,
+      materialsSubtotal,
+      partsSubtotal,
+      otherChargesSubtotal,
+    };
+  }, [
+    serviceLanguage,
+    adminKey,
+    restaurantName,
+    bookingReference,
+    clientEmail,
+    technicianName,
+    serviceDate,
+    checklist,
+    notes,
+    laborHours,
+    materialsSubtotal,
+    partsSubtotal,
+    otherChargesSubtotal,
+  ]);
+
+  const resetFormForNewReport = useCallback(() => {
+    void clearEntireServicioDraft();
+    try {
+      sessionStorage.removeItem(STORAGE_ADMIN);
+    } catch {
+      /* ignore */
+    }
+    setServiceLanguage("es");
+    setAdminKey("");
+    setRestaurantName("");
+    setBookingReference("");
+    setClientEmail("");
+    setTechnicianName("");
+    setServiceDate(defaultServiceDateString());
+    setChecklist({ airGap: "pass", handSink: "pass", greaseTrap: "pass" });
+    setNotes("");
+    setLaborHours("");
+    setMaterialsSubtotal("");
+    setPartsSubtotal("");
+    setOtherChargesSubtotal("");
+    setPhotosBefore([]);
+    setPhotosAfter([]);
+    setError(null);
+  }, []);
+
+  const handleClearDraft = useCallback(() => {
+    resetFormForNewReport();
+    setStatus(null);
+    setPaymentReturn(null);
+    setChargeError(null);
+  }, [resetFormForNewReport]);
+
+  const onPhotoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files;
     if (!list?.length) return;
-    setPhotosBefore((prev) => [...prev, ...Array.from(list)].slice(0, 6));
+    const add = (prev: File[]) =>
+      [...prev, ...Array.from(list)].slice(0, 6);
+    if (photoPickSideRef.current === "before") {
+      setPhotosBefore(add);
+    } else {
+      setPhotosAfter(add);
+    }
     e.target.value = "";
   };
 
-  const onAfterFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const list = e.target.files;
-    if (!list?.length) return;
-    setPhotosAfter((prev) => [...prev, ...Array.from(list)].slice(0, 6));
-    e.target.value = "";
+  const openPhotoPicker = (side: "before" | "after") => {
+    photoPickSideRef.current = side;
+    photoInputRef.current?.click();
   };
 
   async function onSubmit(e: React.FormEvent) {
@@ -211,6 +409,7 @@ export function ServicioEnSitioForm() {
       setStatus(
         buildServicioSuccessMessage(serviceLanguage, clientEmail, due),
       );
+      resetFormForNewReport();
     } catch {
       setError(c.networkError);
     } finally {
@@ -221,6 +420,7 @@ export function ServicioEnSitioForm() {
   async function onChargeByCard() {
     setChargeError(null);
     setPaymentReturn(null);
+    await persistFullDraft(buildDraft(), photosBefore, photosAfter);
     persistAdminKey();
     let key = adminKey.trim();
     if (!key) {
@@ -345,6 +545,18 @@ export function ServicioEnSitioForm() {
           {c.pageTitle}
         </h1>
         <p className="mt-1 text-lg text-sky-400">{c.pageSubtitle}</p>
+        <div className="mt-4 flex flex-col items-center gap-1">
+          <button
+            type="button"
+            onClick={handleClearDraft}
+            className="text-sm text-slate-400 underline decoration-slate-500 underline-offset-2 hover:text-slate-200"
+          >
+            {c.clearDraftButton}
+          </button>
+          <p className="max-w-md text-center text-xs text-slate-500">
+            {c.clearDraftHelp}
+          </p>
+        </div>
       </header>
 
       <section className="rounded-2xl border border-slate-600 bg-slate-800/40 p-4">
@@ -462,27 +674,18 @@ export function ServicioEnSitioForm() {
 
       <section className="grid gap-4 sm:grid-cols-2">
         <input
-          ref={beforeInputRef}
+          ref={photoInputRef}
           type="file"
           accept="image/*"
           capture="environment"
           multiple
           className="hidden"
-          onChange={onBeforeFiles}
-        />
-        <input
-          ref={afterInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          className="hidden"
-          onChange={onAfterFiles}
+          onChange={onPhotoInputChange}
         />
         <div>
           <button
             type="button"
-            onClick={() => beforeInputRef.current?.click()}
+            onClick={() => openPhotoPicker("before")}
             className="flex min-h-[5.5rem] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sky-500/60 bg-sky-950/20 px-4 py-6 text-lg font-bold text-sky-300 transition hover:bg-sky-950/40"
           >
             <span className="text-3xl" aria-hidden>
@@ -493,16 +696,24 @@ export function ServicioEnSitioForm() {
               {c.photosBeforeSub}
             </span>
           </button>
-          <PhotoChips
+          <PhotoThumbnails
+            key="servicio-photo-thumbs-before"
             files={photosBefore}
             onRemove={setPhotosBefore}
             removeAria={c.removePhotoAria}
+            tone="before"
+            caption={c.photoCountInline}
+            previewHint={c.photoPreviewUnavailable}
+            typeLabel={c.photoTypeLabel}
+            indexLabel={c.photoIndexLabel}
+            openPreviewAria={c.openPhotoPreviewAria}
+            closePhotoPreview={c.closePhotoPreview}
           />
         </div>
         <div>
           <button
             type="button"
-            onClick={() => afterInputRef.current?.click()}
+            onClick={() => openPhotoPicker("after")}
             className="flex min-h-[5.5rem] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-500/60 bg-orange-950/20 px-4 py-6 text-lg font-bold text-orange-300 transition hover:bg-orange-950/40"
           >
             <span className="text-3xl" aria-hidden>
@@ -513,10 +724,18 @@ export function ServicioEnSitioForm() {
               {c.photosAfterSub}
             </span>
           </button>
-          <PhotoChips
+          <PhotoThumbnails
+            key="servicio-photo-thumbs-after"
             files={photosAfter}
             onRemove={setPhotosAfter}
             removeAria={c.removePhotoAria}
+            tone="after"
+            caption={c.photoCountInline}
+            previewHint={c.photoPreviewUnavailable}
+            typeLabel={c.photoTypeLabel}
+            indexLabel={c.photoIndexLabel}
+            openPreviewAria={c.openPhotoPreviewAria}
+            closePhotoPreview={c.closePhotoPreview}
           />
         </div>
       </section>
@@ -704,34 +923,225 @@ export function ServicioEnSitioForm() {
   );
 }
 
-function PhotoChips({
+function PhotoThumbnails({
   files,
   onRemove,
   removeAria,
+  tone,
+  caption,
+  previewHint,
+  typeLabel,
+  indexLabel,
+  openPreviewAria,
+  closePhotoPreview,
 }: {
   files: File[];
   onRemove: React.Dispatch<React.SetStateAction<File[]>>;
   removeAria: string;
+  tone: "before" | "after";
+  caption: (n: number) => string;
+  previewHint: string;
+  typeLabel: string;
+  indexLabel: (i: number, total: number) => string;
+  openPreviewAria: string;
+  closePhotoPreview: string;
 }) {
+  const filesKey = useMemo(
+    () =>
+      files
+        .map(
+          (f, i) =>
+            `${i}:${f.name}\0${f.size}\0${f.lastModified}\0${f.type || inferMimeFromFilename(f.name) || ""}`,
+        )
+        .join("|"),
+    [files],
+  );
+
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
+  const [blobUrls, setBlobUrls] = useState<string[]>([]);
+  const [canvasJpegs, setCanvasJpegs] = useState<(string | null)[]>([]);
+  const [blobLoadFailed, setBlobLoadFailed] = useState<boolean[]>([]);
+  const [canvasDecodeDone, setCanvasDecodeDone] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  useLayoutEffect(() => {
+    setLightbox(null);
+    const list = filesRef.current;
+    if (list.length === 0) {
+      setBlobUrls([]);
+      setCanvasJpegs([]);
+      setBlobLoadFailed([]);
+      setCanvasDecodeDone(false);
+      return;
+    }
+    const next = list.map((f) => URL.createObjectURL(f));
+    setBlobUrls(next);
+    setCanvasJpegs(list.map(() => null));
+    setBlobLoadFailed(list.map(() => false));
+    setCanvasDecodeDone(false);
+
+    let cancelled = false;
+    (async () => {
+      const jpegs = await Promise.all(
+        list.map((f) => tryCanvasJpegDataUrl(f, 200, 0.82)),
+      );
+      if (!cancelled) {
+        setCanvasJpegs(jpegs);
+        setCanvasDecodeDone(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      next.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [filesKey]);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
   if (files.length === 0) return null;
+  const border =
+    tone === "before" ? "border-sky-500/50" : "border-orange-500/50";
+  const phTint =
+    tone === "before" ? "bg-sky-950/60" : "bg-orange-950/60";
+  const countLine = caption(files.length);
+
   return (
-    <ul className="mt-2 flex flex-wrap gap-2">
-      {files.map((f, i) => (
-        <li
-          key={`${f.name}-${i}`}
-          className="flex items-center gap-1 rounded-lg bg-slate-700 px-2 py-1 text-xs text-slate-200"
-        >
-          <span className="max-w-[120px] truncate">{f.name}</span>
-          <button
-            type="button"
-            className="text-red-400 hover:text-red-300"
-            onClick={() => onRemove((prev) => prev.filter((_, j) => j !== i))}
-            aria-label={removeAria}
+    <>
+    <div className="mt-3">
+      <p className="mb-2 text-sm font-medium text-slate-300">
+        {countLine}
+      </p>
+      <ul className="flex flex-wrap gap-2" aria-label={countLine}>
+        {files.map((f, i) => {
+          const mime =
+            f.type?.trim() ||
+            inferMimeFromFilename(f.name) ||
+            "—";
+          const jpg = canvasJpegs[i] ?? null;
+          const burl = blobUrls[i];
+          const useBlob = !jpg && Boolean(burl) && !blobLoadFailed[i];
+          const hasDisplay = Boolean(jpg) || (Boolean(burl) && !blobLoadFailed[i]);
+          const showNoThumbHint = canvasDecodeDone && !hasDisplay;
+          const previewTarget =
+            burl && !blobLoadFailed[i] ? burl : jpg ?? burl ?? null;
+          const canOpenPreview = Boolean(previewTarget);
+
+          return (
+            <li
+              key={fileSlotKey(f, i)}
+              className={`relative h-20 w-20 touch-manipulation overflow-hidden rounded-lg border ${border} ${phTint} shadow-inner ${
+                canOpenPreview ? "cursor-pointer" : "cursor-default"
+              }`}
+            >
+              <div
+                className="absolute inset-0 z-0 flex flex-col justify-between gap-0.5 p-1.5"
+                aria-hidden
+              >
+                <span className="line-clamp-1 text-center text-[8px] font-medium leading-tight text-slate-200">
+                  {indexLabel(i, files.length)}
+                </span>
+                <span
+                  className="line-clamp-2 min-h-0 flex-1 break-all text-left text-[7px] leading-tight text-slate-300/95"
+                  title={f.name}
+                >
+                  {f.name || "—"}
+                </span>
+                <span className="line-clamp-1 text-left text-[7px] text-slate-400">
+                  {typeLabel}: {mime}
+                </span>
+                {showNoThumbHint ? (
+                  <span className="line-clamp-2 text-left text-[6.5px] leading-tight text-amber-200/90">
+                    {previewHint}
+                  </span>
+                ) : null}
+              </div>
+              {jpg ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={jpg}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
+                />
+              ) : useBlob && burl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- blob: URL
+                <img
+                  src={burl}
+                  alt=""
+                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-cover"
+                  onError={() => {
+                    setBlobLoadFailed((prev) => {
+                      const n = [...prev];
+                      n[i] = true;
+                      return n;
+                    });
+                  }}
+                />
+              ) : null}
+              {canOpenPreview ? (
+                <button
+                  type="button"
+                  className="absolute inset-0 z-[25] m-0 min-h-0 min-w-0 touch-manipulation border-0 bg-transparent p-0"
+                  onClick={() => setLightbox(previewTarget!)}
+                  aria-label={`${openPreviewAria} — ${f.name || "image"}`}
+                />
+              ) : null}
+              <button
+                type="button"
+                className="absolute right-0 top-0 z-30 touch-manipulation rounded-bl bg-black/60 px-1.5 text-sm font-bold leading-tight text-red-200 hover:bg-black/80"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove((prev) => prev.filter((_, j) => j !== i));
+                }}
+                aria-label={removeAria}
+              >
+                ×
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+    {lightbox && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label={openPreviewAria}
+            onClick={() => setLightbox(null)}
           >
-            ×
-          </button>
-        </li>
-      ))}
-    </ul>
+            <button
+              type="button"
+              className="absolute right-2 top-2 z-10 min-h-11 min-w-11 touch-manipulation rounded-lg bg-slate-800/90 px-3 text-2xl leading-none text-slate-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightbox(null);
+              }}
+              aria-label={closePhotoPreview}
+            >
+              ×
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightbox}
+              alt=""
+              className="max-h-[90dvh] max-w-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>,
+          document.body,
+        )
+      : null}
+    </>
   );
 }

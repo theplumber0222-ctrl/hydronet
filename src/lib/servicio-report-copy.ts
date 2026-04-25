@@ -107,6 +107,17 @@ type Block = {
   apiChargeNoBalance: string;
   apiChargeMinAmount: string;
   apiChargeFailed: string;
+  /** Borrador en el dispositivo (local) */
+  clearDraftButton: string;
+  clearDraftHelp: string;
+  /** Cantidad bajo previsualizaciones (Antes/Después) */
+  photoCountInline: (n: number) => string;
+  /** Miniatura: HEIC/ Safari / blob */
+  photoPreviewUnavailable: string;
+  photoTypeLabel: string;
+  photoIndexLabel: (i: number, total: number) => string;
+  openPhotoPreviewAria: string;
+  closePhotoPreview: string;
 };
 
 const EN: Block = {
@@ -205,6 +216,14 @@ const EN: Block = {
   apiChargeNoBalance: "No balance to charge",
   apiChargeMinAmount: "Amount is below the minimum for card payment ($0.50)",
   apiChargeFailed: "Could not create checkout session",
+  clearDraftButton: "Clear saved draft",
+  clearDraftHelp: "Removes this device’s saved form and photos. Does not affect sent PDFs or Stripe.",
+  photoCountInline: (n) => (n === 1 ? "1 photo" : `${n} photos`),
+  photoPreviewUnavailable: "No thumbnail — file is still included for the report and send.",
+  photoTypeLabel: "Type",
+  photoIndexLabel: (i, total) => `Photo ${i + 1} of ${total}`,
+  openPhotoPreviewAria: "Open full-size photo preview",
+  closePhotoPreview: "Close",
 };
 
 const ES: Block = {
@@ -304,6 +323,16 @@ const ES: Block = {
   apiChargeNoBalance: "No hay saldo que cobrar",
   apiChargeMinAmount: "El importe no alcanza el mínimo para pago con tarjeta (US$0,50)",
   apiChargeFailed: "No se pudo crear la sesión de pago",
+  clearDraftButton: "Borrar borrador guardado",
+  clearDraftHelp:
+    "Quita de este dispositivo el formulario y las fotos guardadas. No afecta PDFs ya enviados ni pagos en Stripe.",
+  photoCountInline: (n) => (n === 1 ? "1 foto" : `${n} fotos`),
+  photoPreviewUnavailable:
+    "Sin miniatura — el archivo sigue incluido para el informe y el envío.",
+  photoTypeLabel: "Tipo",
+  photoIndexLabel: (i, total) => `Foto ${i + 1} de ${total}`,
+  openPhotoPreviewAria: "Abrir previsualización a tamaño completo",
+  closePhotoPreview: "Cerrar",
 };
 
 export function servicioReportCopy(lang: ServicioLanguage): Block {
