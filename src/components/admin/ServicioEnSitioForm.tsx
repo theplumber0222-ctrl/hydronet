@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
 import {
@@ -55,6 +55,24 @@ const initialPhotoDebug: ServicioPhotoDebugInfo = {
   lastFirstType: "—",
   lastFirstSize: "—",
 };
+
+/** FileList → File[] propio; en WebKit conviene no depender del blob del input. */
+function cloneFilesForState(list: FileList): File[] {
+  return Array.from(list).map((f) => {
+    const t =
+      f.type && f.type !== "application/octet-stream" ? f.type : "image/jpeg";
+    return new File([f], f.name || "image.jpg", {
+      type: t,
+      lastModified: f.lastModified,
+    });
+  });
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 function defaultServiceDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -117,6 +135,8 @@ export function ServicioEnSitioForm() {
     null,
   );
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const skipHydrateBeforeRef = useRef(false);
+  const skipHydrateAfterRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,8 +186,12 @@ export function ServicioEnSitioForm() {
             /* ignore */
           }
         }
-        if (beforeFiles.length) setPhotosBefore(beforeFiles);
-        if (afterFiles.length) setPhotosAfter(afterFiles);
+        if (!skipHydrateBeforeRef.current && beforeFiles.length) {
+          setPhotosBefore(beforeFiles);
+        }
+        if (!skipHydrateAfterRef.current && afterFiles.length) {
+          setPhotosAfter(afterFiles);
+        }
       } catch {
         try {
           const s = sessionStorage.getItem(STORAGE_ADMIN);
@@ -329,6 +353,8 @@ export function ServicioEnSitioForm() {
     setPhotosBefore([]);
     setPhotosAfter([]);
     setDebugInfo(initialPhotoDebug);
+    skipHydrateBeforeRef.current = false;
+    skipHydrateAfterRef.current = false;
     setError(null);
   }, []);
 
@@ -340,7 +366,8 @@ export function ServicioEnSitioForm() {
   }, [resetFormForNewReport]);
 
   const onBeforeFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const list = e.target.files;
+    const input = e.currentTarget;
+    const list = input.files;
     const n = list?.length ?? 0;
     const first = n > 0 && list ? list[0] : null;
     setDebugInfo((prev) => ({
@@ -353,23 +380,21 @@ export function ServicioEnSitioForm() {
       lastFirstType: first ? (first.type || "(type empty)") : "—",
       lastFirstSize: first != null ? String(first.size) : "—",
     }));
-    console.log("[HydroNet servicio] file onChange", {
-      side: "before",
-      filesLength: n,
-      firstName: first?.name,
-      firstType: first?.type,
-      firstSize: first?.size,
-    });
-    if (!n) {
-      e.target.value = "";
+    if (!n || !list) {
+      input.value = "";
       return;
     }
-    setPhotosBefore((prev) => [...prev, ...Array.from(list!)].slice(0, 6));
-    e.target.value = "";
+    const files = cloneFilesForState(list);
+    skipHydrateBeforeRef.current = true;
+    setPhotosBefore((prev) => [...prev, ...files].slice(0, 6));
+    setTimeout(() => {
+      input.value = "";
+    }, 0);
   };
 
   const onAfterFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const list = e.target.files;
+    const input = e.currentTarget;
+    const list = input.files;
     const n = list?.length ?? 0;
     const first = n > 0 && list ? list[0] : null;
     setDebugInfo((prev) => ({
@@ -382,19 +407,16 @@ export function ServicioEnSitioForm() {
       lastFirstType: first ? (first.type || "(type empty)") : "—",
       lastFirstSize: first != null ? String(first.size) : "—",
     }));
-    console.log("[HydroNet servicio] file onChange", {
-      side: "after",
-      filesLength: n,
-      firstName: first?.name,
-      firstType: first?.type,
-      firstSize: first?.size,
-    });
-    if (!n) {
-      e.target.value = "";
+    if (!n || !list) {
+      input.value = "";
       return;
     }
-    setPhotosAfter((prev) => [...prev, ...Array.from(list!)].slice(0, 6));
-    e.target.value = "";
+    const files = cloneFilesForState(list);
+    skipHydrateAfterRef.current = true;
+    setPhotosAfter((prev) => [...prev, ...files].slice(0, 6));
+    setTimeout(() => {
+      input.value = "";
+    }, 0);
   };
 
   async function onSubmit(e: React.FormEvent) {
@@ -721,15 +743,17 @@ export function ServicioEnSitioForm() {
 
       <section className="space-y-4">
         <p className="text-xs text-amber-200/90">
-          [DEBUG] Captura temporal — inputs visibles, sin lightbox (quitar al
-          cerrar diagnóstico)
+          [DEBUG] Panel inferiores: estado bruto. Quitar al cerrar diagnóstico.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-sky-500/40 bg-slate-900/50 p-3">
             <p className="mb-1 text-sm font-semibold text-sky-300">
               {c.photosBefore}
             </p>
-            <p className="mb-2 text-xs text-slate-500">{c.photosBeforeSub}</p>
+            <p className="mb-1 text-xs text-slate-500">{c.photosBeforeSub}</p>
+            <p className="mb-2 text-sm font-medium text-slate-200">
+              {c.photosBefore}: {c.photoCountInline(photosBefore.length)}
+            </p>
             <input
               type="file"
               accept="image/*"
@@ -747,7 +771,10 @@ export function ServicioEnSitioForm() {
             <p className="mb-1 text-sm font-semibold text-orange-300">
               {c.photosAfter}
             </p>
-            <p className="mb-2 text-xs text-slate-500">{c.photosAfterSub}</p>
+            <p className="mb-1 text-xs text-slate-500">{c.photosAfterSub}</p>
+            <p className="mb-2 text-sm font-medium text-slate-200">
+              {c.photosAfter}: {c.photoCountInline(photosAfter.length)}
+            </p>
             <input
               type="file"
               accept="image/*"
@@ -964,7 +991,7 @@ export function ServicioEnSitioForm() {
   );
 }
 
-/** [TEMP DEBUG] lista mínima de nombres — sin miniaturas */
+/** Lista mínima: nombre, tamaño legible, quitar. Sin miniaturas. */
 function SimplePhotoNameList({
   files,
   onRemove,
@@ -978,22 +1005,23 @@ function SimplePhotoNameList({
     return <p className="text-xs text-slate-500">(sin archivos)</p>;
   }
   return (
-    <ul className="mt-1 space-y-1 text-xs text-slate-300">
+    <ul className="mt-1 space-y-1.5 text-xs text-slate-300">
       {files.map((f, i) => (
         <li
           key={`${f.name}-${i}-${f.size}-${f.lastModified}`}
-          className="flex items-center justify-between gap-1"
+          className="flex items-start justify-between gap-2"
         >
           <span className="min-w-0 break-all">
-            {f.name}{" "}
+            <span className="text-slate-200">{f.name}</span>{" "}
             <span className="text-slate-500">
-              ({f.size} B, {f.type || "no type"})
+              ({formatFileSize(f.size)}
+              {f.type ? ` · ${f.type}` : null})
             </span>
           </span>
           <button
             type="button"
             onClick={() => onRemove((prev) => prev.filter((_, j) => j !== i))}
-            className="shrink-0 touch-manipulation text-red-300"
+            className="shrink-0 touch-manipulation rounded px-1.5 text-sm text-red-300 hover:bg-red-950/50"
             aria-label={removeAria}
           >
             ×
