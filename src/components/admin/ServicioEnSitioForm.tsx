@@ -42,22 +42,15 @@ function generateReportId(): string {
   return `srv${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** Límite por foto: si `blobUpload` no completa, abortamos y mostramos error. */
-const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 120_000;
-
-function isAbortLikeError(err: unknown): boolean {
-  if (err instanceof Error && err.name === "AbortError") return true;
-  if (typeof DOMException !== "undefined" && err instanceof DOMException) {
-    return err.name === "AbortError";
-  }
-  return false;
-}
+/** Límite por foto: `Promise.race` con timeout evita `blobUpload` colgado sin red visible. */
+const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 20_000;
 
 /**
- * Evita que el primer `await blobUpload(...)` quede colgado sin resolver:
- * tras el timeout se llama a `abort()` y la promesa rechaza con mensaje claro.
+ * Cada `blobUpload` compite con un timeout: si a los 20s no hay respuesta, se
+ * aborta la subida y se rechaza con mensaje claro (el `finally` de onSubmit
+ * restaura el botón).
  */
-function blobUploadWithTimeout(
+async function blobUploadWithTimeout(
   pathname: string,
   file: File,
   options: {
@@ -68,45 +61,45 @@ function blobUploadWithTimeout(
   },
 ): Promise<Awaited<ReturnType<typeof blobUpload>>> {
   const ac = new AbortController();
-  let settled = false;
-  const timeoutMsg = `La subida de "${file.name}" superó ${SERVICIO_BLOB_UPLOAD_TIMEOUT_MS / 1000} s. Revisa la conexión e inténtalo de nuevo.`;
-
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => {
-      if (settled) return;
-      settled = true;
+  const timeoutMsg = `La subida de "${file.name}" no respondió en ${SERVICIO_BLOB_UPLOAD_TIMEOUT_MS / 1000} s. Revisa la conexión e inténtalo de nuevo.`;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
       ac.abort();
       reject(new Error(timeoutMsg));
     }, SERVICIO_BLOB_UPLOAD_TIMEOUT_MS);
-
-    void blobUpload(pathname, file, {
-      ...options,
-      abortSignal: ac.signal,
-    }).then(
-      (result) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(t);
-        resolve(result);
-      },
-      (err: unknown) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(t);
-        if (isAbortLikeError(err)) {
-          reject(new Error(timeoutMsg));
-          return;
-        }
-        reject(
-          err instanceof Error
-            ? err
-            : new Error(
-                typeof err === "string" ? err : "Error al subir la foto",
-              ),
-        );
-      },
-    );
   });
+  try {
+    return await Promise.race([
+      blobUpload(pathname, file, { ...options, abortSignal: ac.signal }),
+      timeoutPromise,
+    ]);
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(timeoutMsg);
+    }
+    throw err instanceof Error
+      ? err
+      : new Error(
+          typeof err === "string" ? err : "Error al subir la foto",
+        );
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
+function servicioSubmitStepLabel(
+  lang: ServicioLanguage,
+  step: "before" | "after" | "report",
+): string {
+  if (lang === "en") {
+    if (step === "before") return "Uploading photos (before)…";
+    if (step === "after") return "Uploading photos (after)…";
+    return "Sending report…";
+  }
+  if (step === "before") return "Subiendo fotos (antes)…";
+  if (step === "after") return "Subiendo fotos (después)…";
+  return "Enviando reporte…";
 }
 
 /**
@@ -235,6 +228,8 @@ export function ServicioEnSitioForm() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Paso visible durante el submit (subida Blob / envío del reporte). */
+  const [submitStep, setSubmitStep] = useState<string | null>(null);
   const [chargeLoading, setChargeLoading] = useState(false);
   const [chargeError, setChargeError] = useState<string | null>(null);
   const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(
@@ -556,6 +551,7 @@ export function ServicioEnSitioForm() {
     }
 
     setLoading(true);
+    setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "before"));
     try {
       // 1) Sube fotos directo a Vercel Blob desde el navegador para evitar
       //    FUNCTION_PAYLOAD_TOO_LARGE en /api/admin/servicio/report.
@@ -569,6 +565,7 @@ export function ServicioEnSitioForm() {
           reportId,
           key,
         );
+        setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "after"));
         photosAfterRefs = await uploadPhotoSideDirect(
           "after",
           photosAfter,
@@ -584,6 +581,7 @@ export function ServicioEnSitioForm() {
       }
 
       // 2) Body ligero (solo metadata + URLs Blob) al endpoint del reporte.
+      setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "report"));
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (key) headers["x-hydronet-admin-key"] = key;
 
@@ -631,6 +629,7 @@ export function ServicioEnSitioForm() {
       console.error("[servicio] submit failed", err);
       setError(err instanceof Error ? err.message : c.networkError);
     } finally {
+      setSubmitStep(null);
       setLoading(false);
     }
   }
@@ -1108,6 +1107,12 @@ export function ServicioEnSitioForm() {
           {status}
         </p>
       )}
+
+      {loading && submitStep ? (
+        <p className="text-center text-sm text-slate-300" aria-live="polite">
+          {submitStep}
+        </p>
+      ) : null}
 
       <button
         type="submit"
