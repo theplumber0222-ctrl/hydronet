@@ -119,6 +119,12 @@ export function ServicioEnSitioForm() {
   const [draftHydrated, setDraftHydrated] = useState(false);
   const skipHydrateBeforeRef = useRef(false);
   const skipHydrateAfterRef = useRef(false);
+  /**
+   * Se pone en `true` al hacer reset (post-submit o "Limpiar borrador"). Bloquea
+   * cualquier `loadPhotoSide` que aún esté en vuelo desde el mount inicial para
+   * que no rehidrate fotos de un reporte ya cerrado.
+   */
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +134,7 @@ export function ServicioEnSitioForm() {
         const beforeFiles = await loadPhotoSide("before");
         const afterFiles = await loadPhotoSide("after");
         if (cancelled) return;
+        if (submittedRef.current) return;
         if (t?.v === 1) {
           if (t.serviceLanguage === "en" || t.serviceLanguage === "es")
             setServiceLanguage(t.serviceLanguage);
@@ -168,10 +175,18 @@ export function ServicioEnSitioForm() {
             /* ignore */
           }
         }
-        if (!skipHydrateBeforeRef.current && beforeFiles.length) {
+        if (
+          !submittedRef.current &&
+          !skipHydrateBeforeRef.current &&
+          beforeFiles.length
+        ) {
           setPhotosBefore(beforeFiles);
         }
-        if (!skipHydrateAfterRef.current && afterFiles.length) {
+        if (
+          !submittedRef.current &&
+          !skipHydrateAfterRef.current &&
+          afterFiles.length
+        ) {
           setPhotosAfter(afterFiles);
         }
       } catch {
@@ -312,8 +327,13 @@ export function ServicioEnSitioForm() {
     otherChargesSubtotal,
   ]);
 
-  const resetFormForNewReport = useCallback(() => {
-    void clearEntireServicioDraft();
+  const resetFormForNewReport = useCallback(async () => {
+    submittedRef.current = true;
+    try {
+      await clearEntireServicioDraft();
+    } catch {
+      /* IDB no disponible o falló: el state local de abajo igual queda en cero */
+    }
     try {
       sessionStorage.removeItem(STORAGE_ADMIN);
     } catch {
@@ -339,8 +359,8 @@ export function ServicioEnSitioForm() {
     setError(null);
   }, []);
 
-  const handleClearDraft = useCallback(() => {
-    resetFormForNewReport();
+  const handleClearDraft = useCallback(async () => {
+    await resetFormForNewReport();
     setStatus(null);
     setPaymentReturn(null);
     setChargeError(null);
@@ -455,7 +475,7 @@ export function ServicioEnSitioForm() {
       setStatus(
         buildServicioSuccessMessage(serviceLanguage, clientEmail, due),
       );
-      resetFormForNewReport();
+      await resetFormForNewReport();
     } catch {
       setError(c.networkError);
     } finally {
