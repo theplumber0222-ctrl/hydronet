@@ -79,8 +79,13 @@ export async function POST(req: Request) {
     checklistHandSink: form.get("checklistHandSink"),
     checklistGreaseTrap: form.get("checklistGreaseTrap"),
     notes: String(form.get("notes") ?? ""),
-    invoiceSubtotal: form.get("invoiceSubtotal"),
+    laborSubtotal: form.get("laborSubtotal"),
+    materialsSubtotal: form.get("materialsSubtotal"),
+    partsSubtotal: form.get("partsSubtotal"),
+    otherChargesSubtotal: form.get("otherChargesSubtotal"),
   };
+
+  const money = z.coerce.number().nonnegative();
 
   const schema = z.object({
     bookingReference: z.string().max(200).optional().default(""),
@@ -92,7 +97,10 @@ export async function POST(req: Request) {
     checklistHandSink: checklist,
     checklistGreaseTrap: checklist,
     notes: z.string().max(4000).optional().default(""),
-    invoiceSubtotal: z.coerce.number().nonnegative(),
+    laborSubtotal: money,
+    materialsSubtotal: money,
+    partsSubtotal: money,
+    otherChargesSubtotal: money,
   });
 
   let parsed: z.infer<typeof schema>;
@@ -120,9 +128,16 @@ export async function POST(req: Request) {
   }
 
   const depositCredit = CONNECT_DEPOSIT_USD;
+  const invoiceSubtotal = Math.round(
+    (parsed.laborSubtotal +
+      parsed.materialsSubtotal +
+      parsed.partsSubtotal +
+      parsed.otherChargesSubtotal) *
+      100,
+  ) / 100;
   const amountDue = Math.max(
     0,
-    Math.round((parsed.invoiceSubtotal - depositCredit) * 100) / 100,
+    Math.round((invoiceSubtotal - depositCredit) * 100) / 100,
   );
 
   const payload = {
@@ -136,7 +151,7 @@ export async function POST(req: Request) {
     checklistHandSink: parsed.checklistHandSink as ChecklistStatus,
     checklistGreaseTrap: parsed.checklistGreaseTrap as ChecklistStatus,
     notes: parsed.notes ?? "",
-    invoiceSubtotal: parsed.invoiceSubtotal,
+    invoiceSubtotal,
     depositCredit,
     amountDue,
     photosBefore: before.buffers,
@@ -150,7 +165,7 @@ export async function POST(req: Request) {
       restaurantName: parsed.restaurantName,
       pdfBuffer,
       amountDue,
-      invoiceSubtotal: parsed.invoiceSubtotal,
+      invoiceSubtotal,
       depositCredit,
       language,
       bookingReference: payload.bookingReference,
@@ -163,7 +178,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     amountDue,
-    invoiceSubtotal: parsed.invoiceSubtotal,
+    invoiceSubtotal,
     depositCredit,
   });
 }

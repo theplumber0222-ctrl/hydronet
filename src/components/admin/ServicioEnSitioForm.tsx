@@ -25,6 +25,18 @@ function checklistTitle(
 
 const STORAGE_ADMIN = "hydronet_servicio_admin_key";
 
+function parseMoneyField(s: string): number {
+  const t = s.trim().replace(",", ".");
+  if (t === "") return 0;
+  const n = parseFloat(t);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function ServicioEnSitioForm() {
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +60,10 @@ export function ServicioEnSitioForm() {
     greaseTrap: "pass",
   });
   const [notes, setNotes] = useState("");
-  const [invoiceSubtotal, setInvoiceSubtotal] = useState<string>("");
+  const [laborSubtotal, setLaborSubtotal] = useState("");
+  const [materialsSubtotal, setMaterialsSubtotal] = useState("");
+  const [partsSubtotal, setPartsSubtotal] = useState("");
+  const [otherChargesSubtotal, setOtherChargesSubtotal] = useState("");
 
   const [photosBefore, setPhotosBefore] = useState<File[]>([]);
   const [photosAfter, setPhotosAfter] = useState<File[]>([]);
@@ -66,9 +81,13 @@ export function ServicioEnSitioForm() {
     }
   }, []);
 
-  const subtotalNum = parseFloat(invoiceSubtotal.replace(",", ".")) || 0;
+  const laborN = parseMoneyField(laborSubtotal);
+  const materialsN = parseMoneyField(materialsSubtotal);
+  const partsN = parseMoneyField(partsSubtotal);
+  const otherN = parseMoneyField(otherChargesSubtotal);
+  const invoiceSubtotal = round2(laborN + materialsN + partsN + otherN);
   const deposit = CONNECT_DEPOSIT_USD;
-  const amountDue = Math.max(0, Math.round((subtotalNum - deposit) * 100) / 100);
+  const amountDue = Math.max(0, round2(invoiceSubtotal - deposit));
 
   const persistAdminKey = useCallback(() => {
     if (adminKey.trim()) {
@@ -120,7 +139,10 @@ export function ServicioEnSitioForm() {
     fd.set("checklistHandSink", checklist.handSink);
     fd.set("checklistGreaseTrap", checklist.greaseTrap);
     fd.set("notes", notes);
-    fd.set("invoiceSubtotal", String(subtotalNum));
+    fd.set("laborSubtotal", String(laborN));
+    fd.set("materialsSubtotal", String(materialsN));
+    fd.set("partsSubtotal", String(partsN));
+    fd.set("otherChargesSubtotal", String(otherN));
     photosBefore.forEach((f, i) => fd.append(`photo_before_${i}`, f));
     photosAfter.forEach((f, i) => fd.append(`photo_after_${i}`, f));
 
@@ -447,17 +469,60 @@ export function ServicioEnSitioForm() {
 
       <section className="rounded-2xl border border-orange-500/30 bg-slate-900/60 p-5">
         <h2 className="text-xl font-semibold text-orange-400">{c.billingTitle}</h2>
-        <label className="label mt-4">{c.subtotalLabel}</label>
-        <p className="text-xs text-slate-500">{c.subtotalHelp}</p>
-        <input
-          className="input-field text-2xl font-bold"
-          inputMode="decimal"
-          required
-          value={invoiceSubtotal}
-          onChange={(e) => setInvoiceSubtotal(e.target.value)}
-          placeholder="0.00"
-        />
+        <p className="mt-1 text-sm text-slate-500">{c.billingSectionHelp}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">{c.laborSubtotalLabel}</label>
+            <input
+              className="input-field font-mono"
+              inputMode="decimal"
+              value={laborSubtotal}
+              onChange={(e) => setLaborSubtotal(e.target.value)}
+              placeholder="0.00"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className="label">{c.materialsSubtotalLabel}</label>
+            <input
+              className="input-field font-mono"
+              inputMode="decimal"
+              value={materialsSubtotal}
+              onChange={(e) => setMaterialsSubtotal(e.target.value)}
+              placeholder="0.00"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className="label">{c.partsSubtotalLabel}</label>
+            <input
+              className="input-field font-mono"
+              inputMode="decimal"
+              value={partsSubtotal}
+              onChange={(e) => setPartsSubtotal(e.target.value)}
+              placeholder="0.00"
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <label className="label">{c.otherChargesSubtotalLabel}</label>
+            <input
+              className="input-field font-mono"
+              inputMode="decimal"
+              value={otherChargesSubtotal}
+              onChange={(e) => setOtherChargesSubtotal(e.target.value)}
+              placeholder="0.00"
+              autoComplete="off"
+            />
+          </div>
+        </div>
         <div className="mt-4 space-y-2 rounded-xl bg-slate-800/80 p-4 text-lg">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-slate-300">
+            <span>{c.aggregatedSubtotalLabel}</span>
+            <span className="font-mono text-slate-200">
+              ${invoiceSubtotal.toFixed(2)}
+            </span>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-slate-300">
             <span>{c.depositRow}</span>
             <span className="font-mono text-sky-400">

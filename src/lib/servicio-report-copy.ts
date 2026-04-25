@@ -46,8 +46,12 @@ type Block = {
   notesLabel: string;
   notesHelp: string;
   billingTitle: string;
-  subtotalLabel: string;
-  subtotalHelp: string;
+  billingSectionHelp: string;
+  laborSubtotalLabel: string;
+  materialsSubtotalLabel: string;
+  partsSubtotalLabel: string;
+  otherChargesSubtotalLabel: string;
+  aggregatedSubtotalLabel: string;
   depositRow: string;
   totalRow: string;
   totalRowHelp: string;
@@ -99,8 +103,9 @@ const EN: Block = {
   navEstimates: "Estimates",
   navHistory: "Client history",
   navMode: "Tablet",
-  pageTitle: "On-site service",
-  pageSubtitle: "Inspection and billing report",
+  pageTitle: "On-site service report",
+  pageSubtitle:
+    "Record the visit, calculate the balance due, generate the PDF, and email it. Card payment is a separate step — not on this screen.",
   adminKeyLabel: "Technician key (if your account uses one)",
   adminKeyHelp: "Optional — must match ADMIN_SERVICIO_KEY on the server",
   establishmentLabel: "Home or business name",
@@ -125,12 +130,18 @@ const EN: Block = {
   photosAfterSub: "Photos after work",
   notesLabel: "Additional notes",
   notesHelp: "Optional details for the report",
-  billingTitle: "Billing",
-  subtotalLabel: "Work subtotal (USD)",
-  subtotalHelp: "Before $195 Dispatch fee credit",
+  billingTitle: "Balance and breakdown",
+  billingSectionHelp:
+    "Enter each line. Amounts update automatically. Card payment is not collected on this screen.",
+  laborSubtotalLabel: "Labor (USD)",
+  materialsSubtotalLabel: "Materials (USD)",
+  partsSubtotalLabel: "Parts (USD)",
+  otherChargesSubtotalLabel: "Other charges (USD)",
+  aggregatedSubtotalLabel: "Service subtotal (before credit)",
   depositRow: "Dispatch fee credit ($195)",
   totalRow: "Amount due",
-  totalRowHelp: "After deposit credit",
+  totalRowHelp:
+    "After dispatch credit. Card payment is not collected on this screen.",
   invoicePreviewTitle: "PDF header preview",
   invoicePreviewHint:
     "Same logo and header layout as the PDF you send (print or save from the browser).",
@@ -140,7 +151,7 @@ const EN: Block = {
   removePhotoAria: "Remove photo",
   depositLegal:
     "The $195 Dispatch fee for non-Gold visits is credited toward your service total. Hourly jobs use a minimum 1-hour charge at checkout. Subject to Tennessee commercial laws and our cancellation policy.",
-  pdfTitle: "On-Site Service Report",
+  pdfTitle: "On-site service report",
   pdfEstablishment: "Establishment",
   pdfBookingRef: "Booking reference",
   pdfTechnician: "Technician",
@@ -177,8 +188,9 @@ const ES: Block = {
   navEstimates: "Estimados",
   navHistory: "Historial cliente",
   navMode: "Tablet",
-  pageTitle: "Servicio en sitio",
-  pageSubtitle: "Informe de inspección y cobro",
+  pageTitle: "Reporte de servicio en sitio",
+  pageSubtitle:
+    "Registre la visita, calcule el saldo pendiente, genere el PDF y envíelo por correo. El pago con tarjeta es aparte; no se cobra en esta pantalla.",
   adminKeyLabel: "Clave de técnico (si su cuenta la usa)",
   adminKeyHelp:
     "Opcional — debe coincidir con ADMIN_SERVICIO_KEY en el servidor",
@@ -204,12 +216,18 @@ const ES: Block = {
   photosAfterSub: "Fotos posteriores al trabajo",
   notesLabel: "Notas adicionales",
   notesHelp: "Detalle opcional para el informe",
-  billingTitle: "Cobro",
-  subtotalLabel: "Subtotal del trabajo (USD)",
-  subtotalHelp: "Antes del crédito de Dispatch fee ($195)",
+  billingTitle: "Saldo y desglose",
+  billingSectionHelp:
+    "Ingrese cada línea. Los importes se actualizan solos. El cobro con tarjeta no se hace en esta pantalla.",
+  laborSubtotalLabel: "Mano de obra (USD)",
+  materialsSubtotalLabel: "Materiales (USD)",
+  partsSubtotalLabel: "Partes / repuestos (USD)",
+  otherChargesSubtotalLabel: "Otros cargos (USD)",
+  aggregatedSubtotalLabel: "Subtotal de servicio (antes del crédito)",
   depositRow: "Crédito Dispatch fee ($195)",
-  totalRow: "Total a cobrar",
-  totalRowHelp: "Tras crédito de reserva",
+  totalRow: "Total a pagar",
+  totalRowHelp:
+    "Tras el crédito dispatch. El cobro con tarjeta no se realiza en esta pantalla.",
   invoicePreviewTitle: "Vista previa del encabezado del PDF",
   invoicePreviewHint:
     "Mismo logo y encabezado que el PDF que envía (imprimir o guardar desde el navegador).",
@@ -258,9 +276,9 @@ export function buildServicioSuccessMessage(
   amountDue: string,
 ): string {
   if (lang === "en") {
-    return `Done. PDF sent to ${clientEmail}. Amount due: $${amountDue} USD (including the $195 Dispatch fee credit).`;
+    return `Done. PDF sent to ${clientEmail}. Balance due: $${amountDue} USD (after $195 dispatch credit). Card payment is a separate step.`;
   }
-  return `Listo. PDF enviado a ${clientEmail}. Total a cobrar: $${amountDue} USD (crédito Dispatch fee $195 aplicado).`;
+  return `Listo. PDF enviado a ${clientEmail}. Saldo pendiente: $${amountDue} USD (tras crédito dispatch $195). El cobro con tarjeta es un paso aparte.`;
 }
 
 function statusWord(
