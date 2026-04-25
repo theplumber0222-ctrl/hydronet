@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { upload as blobUpload } from "@vercel/blob/client";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
 import {
   clearEntireServicioDraft,
@@ -33,55 +32,50 @@ function generateReportId(): string {
 }
 
 /**
- * Límite por foto para el flujo completo de `upload()` (token vía
- * /api/.../photo-upload + subida de bytes a almacenamiento Vercel Blob). En
- * iPad / red móvil el segundo tramo puede tardar más de 20 s sin ser un fallo;
- * 20s provocaba falsos “no respondió” aun con POST 200 al token.
- * Sigue evitando quedarse colgado para siempre si la promesa nunca resuelve.
+ * Sube UNA foto (JPEG) al origen de la app; el servidor la escribe en Vercel
+ * Blob. Evita el flujo anterior cliente→Blob directo, que en Safari/iPad
+ * a menudo no completaba aun con token 200.
  */
-const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 120_000;
-
-/**
- * Cada `blobUpload` compite con un timeout: sin respuesta en ese tiempo, se
- * aborta y se rechaza con mensaje claro (el `finally` de onSubmit restaura el
- * botón).
- */
-async function blobUploadWithTimeout(
-  pathname: string,
+async function uploadOnePhotoViaServer(
   file: File,
-  options: {
-    access: "public";
-    handleUploadUrl: string;
-    contentType: string;
-    headers?: Record<string, string>;
-  },
-): Promise<Awaited<ReturnType<typeof blobUpload>>> {
-  const ac = new AbortController();
-  const timeoutMsg = `La subida de "${file.name}" no respondió en ${SERVICIO_BLOB_UPLOAD_TIMEOUT_MS / 1000} s. Revisa la conexión e inténtalo de nuevo.`;
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      ac.abort();
-      reject(new Error(timeoutMsg));
-    }, SERVICIO_BLOB_UPLOAD_TIMEOUT_MS);
+  reportId: string,
+  side: "before" | "after",
+  index: number,
+  adminKey: string,
+): Promise<UploadedPhotoRef> {
+  const fd = new FormData();
+  fd.set("file", file, file.name || "photo.jpg");
+  fd.set("reportId", reportId);
+  fd.set("side", side);
+  fd.set("index", String(index));
+  const headers: HeadersInit = {};
+  if (adminKey) headers["x-hydronet-admin-key"] = adminKey;
+  const res = await fetch("/api/admin/servicio/photo-upload", {
+    method: "POST",
+    body: fd,
+    headers,
   });
-  try {
-    return await Promise.race([
-      blobUpload(pathname, file, { ...options, abortSignal: ac.signal }),
-      timeoutPromise,
-    ]);
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(timeoutMsg);
-    }
-    throw err instanceof Error
-      ? err
-      : new Error(
-          typeof err === "string" ? err : "Error al subir la foto",
-        );
-  } finally {
-    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    url?: string;
+    pathname?: string;
+    contentType?: string;
+    size?: number;
+  };
+  if (!res.ok) {
+    throw new Error(
+      typeof data.error === "string" ? data.error : "Error al subir la foto",
+    );
   }
+  if (!data.url || !data.pathname) {
+    throw new Error("Respuesta de subida inválida");
+  }
+  return {
+    url: data.url,
+    pathname: data.pathname,
+    contentType: data.contentType || "image/jpeg",
+    size: typeof data.size === "number" ? data.size : file.size,
+  };
 }
 
 function servicioSubmitStepLabel(
@@ -126,8 +120,8 @@ function servicioPhotoProgressLabel(
 }
 
 /**
- * Comprime a JPEG (canvas) y sube a Vercel Blob. Las refs reflejan el archivo
- * optimizado, no el original.
+ * Comprime a JPEG (canvas) y sube vía el servidor (misma app) a Vercel Blob.
+ * Las refs reflejan el archivo optimizado, no el original.
  */
 async function uploadPhotoSideDirect(
   side: "before" | "after",
@@ -152,18 +146,18 @@ async function uploadPhotoSideDirect(
       );
     }
     onPhotoPhase?.({ side, index0: i, total: files.length, phase: "upload" });
-    const path = `servicio-reports/${reportId}/${side}/${String(i).padStart(2, "0")}.jpg`;
-    const result = await blobUploadWithTimeout(path, optimized, {
-      access: "public",
-      handleUploadUrl: "/api/admin/servicio/photo-upload",
-      contentType: "image/jpeg",
-      headers: adminKey ? { "x-hydronet-admin-key": adminKey } : undefined,
-    });
+    const result = await uploadOnePhotoViaServer(
+      optimized,
+      reportId,
+      side,
+      i,
+      adminKey,
+    );
     out.push({
       url: result.url,
       pathname: result.pathname,
       contentType: "image/jpeg",
-      size: optimized.size,
+      size: result.size,
     });
   }
   return out;
