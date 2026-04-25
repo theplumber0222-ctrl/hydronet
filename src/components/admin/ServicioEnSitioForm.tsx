@@ -24,6 +24,8 @@ function checklistTitle(
 }
 
 const STORAGE_ADMIN = "hydronet_servicio_admin_key";
+/** Mínimo USD en Stripe para pago con tarjeta (alineado con API charge). */
+const MIN_CARD_CHARGE_USD = 0.5;
 
 function parseMoneyField(s: string): number {
   const t = s.trim().replace(",", ".");
@@ -71,6 +73,11 @@ export function ServicioEnSitioForm() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [chargeLoading, setChargeLoading] = useState(false);
+  const [chargeError, setChargeError] = useState<string | null>(null);
+  const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(
+    null,
+  );
 
   useEffect(() => {
     try {
@@ -81,6 +88,24 @@ export function ServicioEnSitioForm() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    const pay = p.get("payment");
+    if (pay === "success") {
+      setPaymentReturn("success");
+    } else if (pay === "cancelled") {
+      setPaymentReturn("cancelled");
+    }
+    if (pay === "success" || pay === "cancelled") {
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + window.location.hash,
+      );
+    }
+  }, []);
+
   const laborN = parseMoneyField(laborSubtotal);
   const materialsN = parseMoneyField(materialsSubtotal);
   const partsN = parseMoneyField(partsSubtotal);
@@ -88,6 +113,8 @@ export function ServicioEnSitioForm() {
   const invoiceSubtotal = round2(laborN + materialsN + partsN + otherN);
   const deposit = CONNECT_DEPOSIT_USD;
   const amountDue = Math.max(0, round2(invoiceSubtotal - deposit));
+  const canChargeByCard =
+    amountDue >= MIN_CARD_CHARGE_USD;
 
   const persistAdminKey = useCallback(() => {
     if (adminKey.trim()) {
@@ -176,6 +203,67 @@ export function ServicioEnSitioForm() {
       setError(c.networkError);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onChargeByCard() {
+    setChargeError(null);
+    setPaymentReturn(null);
+    persistAdminKey();
+    let key = adminKey.trim();
+    if (!key) {
+      try {
+        key = sessionStorage.getItem(STORAGE_ADMIN) ?? "";
+      } catch {
+        key = "";
+      }
+    }
+    if (!canChargeByCard) {
+      if (amountDue <= 0) {
+        setChargeError(c.noBalanceToCharge);
+        return;
+      }
+      setChargeError(c.chargeMinStripe);
+      return;
+    }
+
+    setChargeLoading(true);
+    try {
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (key) headers["x-hydronet-admin-key"] = key;
+
+      const res = await fetch("/api/admin/servicio/charge", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          serviceLanguage,
+          bookingReference: bookingReference.trim(),
+          clientEmail: clientEmail.trim(),
+          houseOrBusinessName: restaurantName.trim(),
+          technician: technicianName.trim(),
+          serviceDate: serviceDate.trim(),
+          laborSubtotal: laborN,
+          materialsSubtotal: materialsN,
+          partsSubtotal: partsN,
+          otherChargesSubtotal: otherN,
+        }),
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok) {
+        setChargeError(
+          typeof data.error === "string" ? data.error : c.chargeError,
+        );
+        return;
+      }
+      if (data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      setChargeError(c.chargeError);
+    } catch {
+      setChargeError(c.chargeError);
+    } finally {
+      setChargeLoading(false);
     }
   }
 
@@ -537,7 +625,38 @@ export function ServicioEnSitioForm() {
           </div>
           <p className="text-xs font-normal text-slate-500">{c.totalRowHelp}</p>
         </div>
+
+        <div className="mt-5 border-t border-orange-500/20 pt-5">
+          <p className="text-sm text-slate-500">{c.chargeHelp}</p>
+          <button
+            type="button"
+            onClick={onChargeByCard}
+            disabled={chargeLoading || !canChargeByCard}
+            className="mt-3 w-full rounded-xl border-2 border-emerald-500/60 bg-emerald-950/40 py-3 text-lg font-semibold text-emerald-200 transition hover:bg-emerald-950/60 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {chargeLoading ? c.chargeLoading : c.chargeButton}
+          </button>
+          {!canChargeByCard && (
+            <p className="mt-2 text-sm text-slate-500">
+              {amountDue <= 0 ? c.noBalanceToCharge : c.chargeMinStripe}
+            </p>
+          )}
+          {chargeError && (
+            <p className="mt-2 text-sm text-red-300">{chargeError}</p>
+          )}
+        </div>
       </section>
+
+      {paymentReturn === "success" && (
+        <p className="rounded-xl bg-sky-950/50 px-4 py-3 text-sky-200">
+          {c.paymentSuccessReturn}
+        </p>
+      )}
+      {paymentReturn === "cancelled" && (
+        <p className="rounded-xl bg-amber-950/50 px-4 py-3 text-amber-100">
+          {c.paymentCancelledReturn}
+        </p>
+      )}
 
       {error && (
         <p className="rounded-xl bg-red-950/50 px-4 py-3 text-red-200">

@@ -93,6 +93,18 @@ type Block = {
   apiImagesOnly: string;
   apiImageTooLarge: string;
   apiGenerateFailed: string;
+  /** Balance card charge (separate from PDF/report) */
+  chargeButton: string;
+  chargeHelp: string;
+  noBalanceToCharge: string;
+  chargeMinStripe: string;
+  chargeLoading: string;
+  chargeError: string;
+  paymentSuccessReturn: string;
+  paymentCancelledReturn: string;
+  apiChargeNoBalance: string;
+  apiChargeMinAmount: string;
+  apiChargeFailed: string;
 };
 
 const EN: Block = {
@@ -178,6 +190,17 @@ const EN: Block = {
   apiImagesOnly: "Only image files are allowed.",
   apiImageTooLarge: "Each image must be under 8 MB.",
   apiGenerateFailed: "Could not generate or send the report",
+  chargeButton: "Charge balance by card",
+  chargeHelp: "Only the remaining balance after the booking credit will be charged.",
+  noBalanceToCharge: "There is no remaining balance to charge.",
+  chargeMinStripe: "The balance is below the $0.50 minimum for card payment. Enter a higher total or collect another way.",
+  chargeLoading: "Starting checkout…",
+  chargeError: "Could not start card checkout.",
+  paymentSuccessReturn: "Return from card checkout — if payment was completed, Stripe will send a receipt to the client email when applicable.",
+  paymentCancelledReturn: "Card checkout was cancelled. You can try again when ready.",
+  apiChargeNoBalance: "No balance to charge",
+  apiChargeMinAmount: "Amount is below the minimum for card payment ($0.50)",
+  apiChargeFailed: "Could not create checkout session",
 };
 
 const ES: Block = {
@@ -264,6 +287,17 @@ const ES: Block = {
   apiImagesOnly: "Solo se permiten imágenes.",
   apiImageTooLarge: "Cada imagen debe ser menor a 8 MB.",
   apiGenerateFailed: "Error al generar o enviar",
+  chargeButton: "Cobrar saldo con tarjeta",
+  chargeHelp: "Se cobrará solo el saldo pendiente después del crédito de reserva.",
+  noBalanceToCharge: "No hay saldo pendiente por cobrar.",
+  chargeMinStripe: "El saldo es inferior al mínimo para pago con tarjeta (US$0,50). Aumente el total o use otro método.",
+  chargeLoading: "Abriendo pago con tarjeta…",
+  chargeError: "No se pudo abrir el pago con tarjeta.",
+  paymentSuccessReturn: "Vuelta desde el pago con tarjeta — si se completó, Stripe puede enviar el recibo al correo del cliente si aplica.",
+  paymentCancelledReturn: "Se canceló el pago con tarjeta. Puede intentar de nuevo cuando quiera.",
+  apiChargeNoBalance: "No hay saldo que cobrar",
+  apiChargeMinAmount: "El importe no alcanza el mínimo para pago con tarjeta (US$0,50)",
+  apiChargeFailed: "No se pudo crear la sesión de pago",
 };
 
 export function servicioReportCopy(lang: ServicioLanguage): Block {
