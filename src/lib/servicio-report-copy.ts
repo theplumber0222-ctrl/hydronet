@@ -47,7 +47,9 @@ type Block = {
   notesHelp: string;
   billingTitle: string;
   billingSectionHelp: string;
-  laborSubtotalLabel: string;
+  laborHoursLabel: string;
+  hourlyRateReadonlyLabel: string;
+  laborSubtotalReadonlyLabel: string;
   materialsSubtotalLabel: string;
   partsSubtotalLabel: string;
   otherChargesSubtotalLabel: string;
@@ -144,8 +146,10 @@ const EN: Block = {
   notesHelp: "Optional details for the report",
   billingTitle: "Balance and breakdown",
   billingSectionHelp:
-    "Enter each line. Amounts update automatically. Card payment is not collected on this screen.",
-  laborSubtotalLabel: "Labor (USD)",
+    "Labor total is hours × the current hourly rate (see below). Enter materials, parts, and other charges as separate line items. Card payment is not collected on this screen.",
+  laborHoursLabel: "Labor hours",
+  hourlyRateReadonlyLabel: "Hourly rate (USD)",
+  laborSubtotalReadonlyLabel: "Labor total (USD)",
   materialsSubtotalLabel: "Materials (USD)",
   partsSubtotalLabel: "Parts (USD)",
   otherChargesSubtotalLabel: "Other charges (USD)",
@@ -241,8 +245,10 @@ const ES: Block = {
   notesHelp: "Detalle opcional para el informe",
   billingTitle: "Saldo y desglose",
   billingSectionHelp:
-    "Ingrese cada línea. Los importes se actualizan solos. El cobro con tarjeta no se hace en esta pantalla.",
-  laborSubtotalLabel: "Mano de obra (USD)",
+    "El total de mano de obra es horas × la tarifa por hora vigente (vea abajo). Los materiales, partes y otros cargos se ingresan por separado. El cobro con tarjeta no se hace en esta pantalla.",
+  laborHoursLabel: "Horas de mano de obra",
+  hourlyRateReadonlyLabel: "Tarifa por hora (USD)",
+  laborSubtotalReadonlyLabel: "Total mano de obra (USD)",
   materialsSubtotalLabel: "Materiales (USD)",
   partsSubtotalLabel: "Partes / repuestos (USD)",
   otherChargesSubtotalLabel: "Otros cargos (USD)",

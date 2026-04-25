@@ -15,7 +15,10 @@ export type ServicioReportPayload = {
   checklistHandSink: ChecklistStatus;
   checklistGreaseTrap: ChecklistStatus;
   notes: string;
-  /** labor + materials + parts + other (before $195 dispatch credit) */
+  /**
+   * labor (hours × HOURLY_PLUMBING_RATE_USD) + materials + parts + other
+   * (before $195 dispatch credit)
+   */
   invoiceSubtotal: number;
   depositCredit: number;
   /** invoiceSubtotal - depositCredit, floored at 0 */

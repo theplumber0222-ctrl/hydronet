@@ -9,6 +9,7 @@ import {
 import {
   CONNECT_DEPOSIT_USD,
   getStripe,
+  HOURLY_PLUMBING_RATE_USD,
   isStripeSecretKeyFailure,
   stripeCheckoutTaxDefaults,
 } from "@/lib/stripe";
@@ -18,6 +19,10 @@ export const runtime = "nodejs";
 const MIN_CHECKOUT_USD = 0.5;
 
 const money = z.coerce.number().nonnegative();
+const hoursField = z.coerce
+  .number()
+  .nonnegative()
+  .max(1_000);
 
 const bodySchema = z.object({
   serviceLanguage: z.enum(["en", "es"]).optional().default("es"),
@@ -26,7 +31,7 @@ const bodySchema = z.object({
   houseOrBusinessName: z.string().min(1).max(200),
   technician: z.string().min(1).max(200),
   serviceDate: z.string().min(1).max(32),
-  laborSubtotal: money,
+  laborHours: hoursField,
   materialsSubtotal: money,
   partsSubtotal: money,
   otherChargesSubtotal: money,
@@ -71,8 +76,11 @@ export async function POST(req: Request) {
     : "es";
   const c = servicioReportCopy(language);
 
+  const laborSubtotal = round2(
+    data.laborHours * HOURLY_PLUMBING_RATE_USD,
+  );
   const invoiceSubtotal = round2(
-    data.laborSubtotal +
+    laborSubtotal +
       data.materialsSubtotal +
       data.partsSubtotal +
       data.otherChargesSubtotal,
@@ -111,7 +119,9 @@ export async function POST(req: Request) {
     technician: data.technician.trim().slice(0, 200),
     service_date: data.serviceDate.trim().slice(0, 32),
     service_language: language,
-    labor_subtotal: String(data.laborSubtotal),
+    labor_hours: String(data.laborHours),
+    hourly_plumbing_rate_usd: String(HOURLY_PLUMBING_RATE_USD),
+    labor_subtotal: String(laborSubtotal),
     materials_subtotal: String(data.materialsSubtotal),
     parts_subtotal: String(data.partsSubtotal),
     other_charges_subtotal: String(data.otherChargesSubtotal),

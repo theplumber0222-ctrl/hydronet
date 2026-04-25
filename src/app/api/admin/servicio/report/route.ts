@@ -8,7 +8,7 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
-import { CONNECT_DEPOSIT_USD } from "@/lib/stripe";
+import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
@@ -79,13 +79,18 @@ export async function POST(req: Request) {
     checklistHandSink: form.get("checklistHandSink"),
     checklistGreaseTrap: form.get("checklistGreaseTrap"),
     notes: String(form.get("notes") ?? ""),
-    laborSubtotal: form.get("laborSubtotal"),
+    laborHours: form.get("laborHours"),
     materialsSubtotal: form.get("materialsSubtotal"),
     partsSubtotal: form.get("partsSubtotal"),
     otherChargesSubtotal: form.get("otherChargesSubtotal"),
   };
 
   const money = z.coerce.number().nonnegative();
+  /** Horas; decimales permitidos; tope razonable para la visita. */
+  const hoursField = z.coerce
+    .number()
+    .nonnegative()
+    .max(1_000);
 
   const schema = z.object({
     bookingReference: z.string().max(200).optional().default(""),
@@ -97,7 +102,7 @@ export async function POST(req: Request) {
     checklistHandSink: checklist,
     checklistGreaseTrap: checklist,
     notes: z.string().max(4000).optional().default(""),
-    laborSubtotal: money,
+    laborHours: hoursField,
     materialsSubtotal: money,
     partsSubtotal: money,
     otherChargesSubtotal: money,
@@ -128,8 +133,11 @@ export async function POST(req: Request) {
   }
 
   const depositCredit = CONNECT_DEPOSIT_USD;
+  const laborSubtotal = Math.round(
+    parsed.laborHours * HOURLY_PLUMBING_RATE_USD * 100,
+  ) / 100;
   const invoiceSubtotal = Math.round(
-    (parsed.laborSubtotal +
+    (laborSubtotal +
       parsed.materialsSubtotal +
       parsed.partsSubtotal +
       parsed.otherChargesSubtotal) *

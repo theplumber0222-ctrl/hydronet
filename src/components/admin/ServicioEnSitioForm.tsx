@@ -8,7 +8,7 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
-import { CONNECT_DEPOSIT_USD } from "@/lib/stripe";
+import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
 
 type ChecklistKey = "airGap" | "handSink" | "greaseTrap";
 
@@ -39,6 +39,15 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/** Horas (decimales permitidos; no redondea la entrada, solo descarta &lt; 0). */
+function parseNonNegativeHours(s: string): number {
+  const t = s.trim().replace(",", ".");
+  if (t === "") return 0;
+  const n = parseFloat(t);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return n;
+}
+
 export function ServicioEnSitioForm() {
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +71,7 @@ export function ServicioEnSitioForm() {
     greaseTrap: "pass",
   });
   const [notes, setNotes] = useState("");
-  const [laborSubtotal, setLaborSubtotal] = useState("");
+  const [laborHours, setLaborHours] = useState("");
   const [materialsSubtotal, setMaterialsSubtotal] = useState("");
   const [partsSubtotal, setPartsSubtotal] = useState("");
   const [otherChargesSubtotal, setOtherChargesSubtotal] = useState("");
@@ -106,11 +115,14 @@ export function ServicioEnSitioForm() {
     }
   }, []);
 
-  const laborN = parseMoneyField(laborSubtotal);
+  const laborH = parseNonNegativeHours(laborHours);
+  const laborSubtotal = round2(laborH * HOURLY_PLUMBING_RATE_USD);
   const materialsN = parseMoneyField(materialsSubtotal);
   const partsN = parseMoneyField(partsSubtotal);
   const otherN = parseMoneyField(otherChargesSubtotal);
-  const invoiceSubtotal = round2(laborN + materialsN + partsN + otherN);
+  const invoiceSubtotal = round2(
+    laborSubtotal + materialsN + partsN + otherN,
+  );
   const deposit = CONNECT_DEPOSIT_USD;
   const amountDue = Math.max(0, round2(invoiceSubtotal - deposit));
   const canChargeByCard =
@@ -166,7 +178,7 @@ export function ServicioEnSitioForm() {
     fd.set("checklistHandSink", checklist.handSink);
     fd.set("checklistGreaseTrap", checklist.greaseTrap);
     fd.set("notes", notes);
-    fd.set("laborSubtotal", String(laborN));
+    fd.set("laborHours", String(laborH));
     fd.set("materialsSubtotal", String(materialsN));
     fd.set("partsSubtotal", String(partsN));
     fd.set("otherChargesSubtotal", String(otherN));
@@ -242,7 +254,7 @@ export function ServicioEnSitioForm() {
           houseOrBusinessName: restaurantName.trim(),
           technician: technicianName.trim(),
           serviceDate: serviceDate.trim(),
-          laborSubtotal: laborN,
+          laborHours: laborH,
           materialsSubtotal: materialsN,
           partsSubtotal: partsN,
           otherChargesSubtotal: otherN,
@@ -560,15 +572,27 @@ export function ServicioEnSitioForm() {
         <p className="mt-1 text-sm text-slate-500">{c.billingSectionHelp}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">{c.laborSubtotalLabel}</label>
+            <label className="label">{c.laborHoursLabel}</label>
             <input
               className="input-field font-mono"
               inputMode="decimal"
-              value={laborSubtotal}
-              onChange={(e) => setLaborSubtotal(e.target.value)}
-              placeholder="0.00"
+              value={laborHours}
+              onChange={(e) => setLaborHours(e.target.value)}
+              placeholder="0"
               autoComplete="off"
             />
+          </div>
+          <div>
+            <label className="label">{c.hourlyRateReadonlyLabel}</label>
+            <p className="input-field font-mono text-slate-200">
+              ${HOURLY_PLUMBING_RATE_USD.toFixed(2)}
+            </p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="label">{c.laborSubtotalReadonlyLabel}</label>
+            <p className="input-field font-mono text-slate-100">
+              ${laborSubtotal.toFixed(2)}
+            </p>
           </div>
           <div>
             <label className="label">{c.materialsSubtotalLabel}</label>
