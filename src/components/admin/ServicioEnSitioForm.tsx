@@ -35,37 +35,21 @@ const STORAGE_ADMIN = "hydronet_servicio_admin_key";
 const MIN_CARD_CHARGE_USD = 0.5;
 const DRAFT_SAVE_MS = 450;
 
-/** [TEMP DEBUG iPad Safari] quitar al cerrar el diagnóstico */
-type ServicioPhotoDebugInfo = {
-  onChangeFired: number;
-  lastPickedSide: "before" | "after" | "—";
-  lastChangeAt: string;
-  lastListLength: number;
-  lastFirstName: string;
-  lastFirstType: string;
-  lastFirstSize: string;
-};
-
-const initialPhotoDebug: ServicioPhotoDebugInfo = {
-  onChangeFired: 0,
-  lastPickedSide: "—",
-  lastChangeAt: "—",
-  lastListLength: 0,
-  lastFirstName: "—",
-  lastFirstType: "—",
-  lastFirstSize: "—",
-};
-
-/** FileList → File[] propio; en WebKit conviene no depender del blob del input. */
+/**
+ * FileList → File[] estable para React.
+ * No re-envolvemos con `new File([f], ...)` porque en iPad/Safari ese
+ * constructor puede lanzar sobre Files recién entregados por la cámara,
+ * abortando el handler antes de los setters de estado.
+ * Las referencias originales del FileList son Blobs válidos; React puede
+ * mantenerlas y la capa de IDB las lee vía FileReader.
+ */
 function cloneFilesForState(list: FileList): File[] {
-  return Array.from(list).map((f) => {
-    const t =
-      f.type && f.type !== "application/octet-stream" ? f.type : "image/jpeg";
-    return new File([f], f.name || "image.jpg", {
-      type: t,
-      lastModified: f.lastModified,
-    });
-  });
+  const out: File[] = [];
+  for (let i = 0; i < list.length; i++) {
+    const f = list.item(i);
+    if (f) out.push(f);
+  }
+  return out;
 }
 
 function formatFileSize(bytes: number): string {
@@ -123,8 +107,6 @@ export function ServicioEnSitioForm() {
 
   const [photosBefore, setPhotosBefore] = useState<File[]>([]);
   const [photosAfter, setPhotosAfter] = useState<File[]>([]);
-  const [debugInfo, setDebugInfo] =
-    useState<ServicioPhotoDebugInfo>(initialPhotoDebug);
 
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -352,7 +334,6 @@ export function ServicioEnSitioForm() {
     setOtherChargesSubtotal("");
     setPhotosBefore([]);
     setPhotosAfter([]);
-    setDebugInfo(initialPhotoDebug);
     skipHydrateBeforeRef.current = false;
     skipHydrateAfterRef.current = false;
     setError(null);
@@ -368,55 +349,51 @@ export function ServicioEnSitioForm() {
   const onBeforeFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const list = input.files;
-    const n = list?.length ?? 0;
-    const first = n > 0 && list ? list[0] : null;
-    setDebugInfo((prev) => ({
-      ...prev,
-      onChangeFired: prev.onChangeFired + 1,
-      lastPickedSide: "before",
-      lastChangeAt: new Date().toISOString(),
-      lastListLength: n,
-      lastFirstName: first ? first.name : "(none)",
-      lastFirstType: first ? (first.type || "(type empty)") : "—",
-      lastFirstSize: first != null ? String(first.size) : "—",
-    }));
-    if (!n || !list) {
+    if (!list || list.length === 0) {
       input.value = "";
       return;
     }
-    const files = cloneFilesForState(list);
-    skipHydrateBeforeRef.current = true;
-    setPhotosBefore((prev) => [...prev, ...files].slice(0, 6));
-    setTimeout(() => {
-      input.value = "";
-    }, 0);
+    try {
+      const files = cloneFilesForState(list);
+      if (files.length === 0) return;
+      skipHydrateBeforeRef.current = true;
+      setPhotosBefore((prev) => [...prev, ...files].slice(0, 6));
+    } catch {
+      /* ignore: el input se reinicia abajo y el usuario puede reintentar */
+    } finally {
+      setTimeout(() => {
+        try {
+          input.value = "";
+        } catch {
+          /* ignore */
+        }
+      }, 0);
+    }
   };
 
   const onAfterFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
     const list = input.files;
-    const n = list?.length ?? 0;
-    const first = n > 0 && list ? list[0] : null;
-    setDebugInfo((prev) => ({
-      ...prev,
-      onChangeFired: prev.onChangeFired + 1,
-      lastPickedSide: "after",
-      lastChangeAt: new Date().toISOString(),
-      lastListLength: n,
-      lastFirstName: first ? first.name : "(none)",
-      lastFirstType: first ? (first.type || "(type empty)") : "—",
-      lastFirstSize: first != null ? String(first.size) : "—",
-    }));
-    if (!n || !list) {
+    if (!list || list.length === 0) {
       input.value = "";
       return;
     }
-    const files = cloneFilesForState(list);
-    skipHydrateAfterRef.current = true;
-    setPhotosAfter((prev) => [...prev, ...files].slice(0, 6));
-    setTimeout(() => {
-      input.value = "";
-    }, 0);
+    try {
+      const files = cloneFilesForState(list);
+      if (files.length === 0) return;
+      skipHydrateAfterRef.current = true;
+      setPhotosAfter((prev) => [...prev, ...files].slice(0, 6));
+    } catch {
+      /* ignore: el input se reinicia abajo y el usuario puede reintentar */
+    } finally {
+      setTimeout(() => {
+        try {
+          input.value = "";
+        } catch {
+          /* ignore */
+        }
+      }, 0);
+    }
   };
 
   async function onSubmit(e: React.FormEvent) {
@@ -741,10 +718,7 @@ export function ServicioEnSitioForm() {
         </div>
       </section>
 
-      <section className="space-y-4">
-        <p className="text-xs text-amber-200/90">
-          [DEBUG] Panel inferiores: estado bruto. Quitar al cerrar diagnóstico.
-        </p>
+      <section className="rounded-2xl border border-slate-600 bg-slate-800/40 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-sky-500/40 bg-slate-900/50 p-3">
             <p className="mb-1 text-sm font-semibold text-sky-300">
@@ -752,7 +726,7 @@ export function ServicioEnSitioForm() {
             </p>
             <p className="mb-1 text-xs text-slate-500">{c.photosBeforeSub}</p>
             <p className="mb-2 text-sm font-medium text-slate-200">
-              {c.photosBefore}: {c.photoCountInline(photosBefore.length)}
+              {c.photoCountInline(photosBefore.length)}
             </p>
             <input
               type="file"
@@ -773,7 +747,7 @@ export function ServicioEnSitioForm() {
             </p>
             <p className="mb-1 text-xs text-slate-500">{c.photosAfterSub}</p>
             <p className="mb-2 text-sm font-medium text-slate-200">
-              {c.photosAfter}: {c.photoCountInline(photosAfter.length)}
+              {c.photoCountInline(photosAfter.length)}
             </p>
             <input
               type="file"
@@ -788,23 +762,6 @@ export function ServicioEnSitioForm() {
               removeAria={c.removePhotoAria}
             />
           </div>
-        </div>
-        <div
-          className="rounded-lg border border-amber-500/50 bg-amber-950/30 p-3 font-mono text-xs text-amber-100"
-          data-debug="servicio-photo"
-        >
-          <p className="mb-2 font-sans text-sm font-bold text-amber-200">
-            Photo state (debug)
-          </p>
-          <p>before count: {photosBefore.length}</p>
-          <p>after count: {photosAfter.length}</p>
-          <p>onChange fired (total): {debugInfo.onChangeFired}</p>
-          <p>last picked side: {debugInfo.lastPickedSide}</p>
-          <p>last change at: {debugInfo.lastChangeAt}</p>
-          <p>last list length: {debugInfo.lastListLength}</p>
-          <p>last first name: {debugInfo.lastFirstName}</p>
-          <p>last first type: {debugInfo.lastFirstType}</p>
-          <p>last first size: {debugInfo.lastFirstSize}</p>
         </div>
       </section>
 
