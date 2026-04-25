@@ -52,7 +52,7 @@ export async function uploadServicioPhoto(
   const safeExt = extFromContentType(contentType);
   const pathname = `servicio-reports/${reportId}/${side}/${String(index).padStart(2, "0")}.${safeExt}`;
   const result = await put(pathname, buf, {
-    access: "public",
+    access: "private",
     contentType,
     addRandomSuffix: true,
   });
