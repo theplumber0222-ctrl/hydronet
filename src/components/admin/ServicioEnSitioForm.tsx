@@ -42,6 +42,73 @@ function generateReportId(): string {
   return `srv${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/** Límite por foto: si `blobUpload` no completa, abortamos y mostramos error. */
+const SERVICIO_BLOB_UPLOAD_TIMEOUT_MS = 120_000;
+
+function isAbortLikeError(err: unknown): boolean {
+  if (err instanceof Error && err.name === "AbortError") return true;
+  if (typeof DOMException !== "undefined" && err instanceof DOMException) {
+    return err.name === "AbortError";
+  }
+  return false;
+}
+
+/**
+ * Evita que el primer `await blobUpload(...)` quede colgado sin resolver:
+ * tras el timeout se llama a `abort()` y la promesa rechaza con mensaje claro.
+ */
+function blobUploadWithTimeout(
+  pathname: string,
+  file: File,
+  options: {
+    access: "public";
+    handleUploadUrl: string;
+    contentType: string;
+    headers?: Record<string, string>;
+  },
+): Promise<Awaited<ReturnType<typeof blobUpload>>> {
+  const ac = new AbortController();
+  let settled = false;
+  const timeoutMsg = `La subida de "${file.name}" superó ${SERVICIO_BLOB_UPLOAD_TIMEOUT_MS / 1000} s. Revisa la conexión e inténtalo de nuevo.`;
+
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      ac.abort();
+      reject(new Error(timeoutMsg));
+    }, SERVICIO_BLOB_UPLOAD_TIMEOUT_MS);
+
+    void blobUpload(pathname, file, {
+      ...options,
+      abortSignal: ac.signal,
+    }).then(
+      (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        resolve(result);
+      },
+      (err: unknown) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        if (isAbortLikeError(err)) {
+          reject(new Error(timeoutMsg));
+          return;
+        }
+        reject(
+          err instanceof Error
+            ? err
+            : new Error(
+                typeof err === "string" ? err : "Error al subir la foto",
+              ),
+        );
+      },
+    );
+  });
+}
+
 /**
  * Sube las fotos de un lado directamente a Vercel Blob desde el navegador.
  * Devuelve las refs que luego van en el JSON al endpoint del reporte (ya
@@ -58,7 +125,7 @@ async function uploadPhotoSideDirect(
     const f = files[i];
     const ext = extFromMime(f.type);
     const path = `servicio-reports/${reportId}/${side}/${String(i).padStart(2, "0")}.${ext}`;
-    const result = await blobUpload(path, f, {
+    const result = await blobUploadWithTimeout(path, f, {
       access: "public",
       handleUploadUrl: "/api/admin/servicio/photo-upload",
       contentType: f.type || "image/jpeg",
@@ -510,7 +577,9 @@ export function ServicioEnSitioForm() {
         );
       } catch (uploadErr) {
         console.error("[servicio] photo upload failed", uploadErr);
-        setError(c.networkError);
+        setError(
+          uploadErr instanceof Error ? uploadErr.message : c.networkError,
+        );
         return;
       }
 
@@ -558,8 +627,9 @@ export function ServicioEnSitioForm() {
         buildServicioSuccessMessage(serviceLanguage, clientEmail, due),
       );
       await resetFormForNewReport();
-    } catch {
-      setError(c.networkError);
+    } catch (err) {
+      console.error("[servicio] submit failed", err);
+      setError(err instanceof Error ? err.message : c.networkError);
     } finally {
       setLoading(false);
     }
