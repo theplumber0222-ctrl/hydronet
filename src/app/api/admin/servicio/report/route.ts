@@ -9,6 +9,13 @@ import {
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
 import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
+import { normalizeEmail } from "@/lib/normalize-email";
+import {
+  uploadServicioPhoto,
+  uploadServicioPdf,
+  type StoredPhotoRef,
+} from "@/lib/servicio-report-storage";
 
 export const runtime = "nodejs";
 
@@ -16,14 +23,18 @@ const checklist = z.enum(["pass", "fail", "na"]);
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_FILES_PER_SIDE = 6;
+/** Retención del reporte+fotos en historial (2 años desde serviceDate). */
+const RETENTION_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+
+type CollectedFile = { buffer: Buffer; contentType: string };
 
 async function collectFiles(
   form: FormData,
   prefix: string,
   lang: ServicioLanguage,
-): Promise<{ buffers: Buffer[]; error?: string }> {
+): Promise<{ files: CollectedFile[]; error?: string }> {
   const c = servicioReportCopy(lang);
-  const buffers: Buffer[] = [];
+  const files: CollectedFile[] = [];
   const keys = [...new Set([...form.keys()])]
     .filter((k) => k.startsWith(prefix))
     .sort((a, b) => {
@@ -32,19 +43,67 @@ async function collectFiles(
       return na - nb;
     });
   for (const key of keys) {
-    if (buffers.length >= MAX_FILES_PER_SIDE) break;
+    if (files.length >= MAX_FILES_PER_SIDE) break;
     const v = form.get(key);
     if (!(v instanceof File) || v.size === 0) continue;
     if (!v.type.startsWith("image/")) {
-      return { buffers: [], error: c.apiImagesOnly };
+      return { files: [], error: c.apiImagesOnly };
     }
     if (v.size > MAX_BYTES) {
-      return { buffers: [], error: c.apiImageTooLarge };
+      return { files: [], error: c.apiImageTooLarge };
     }
     const ab = await v.arrayBuffer();
-    buffers.push(Buffer.from(new Uint8Array(ab)));
+    files.push({
+      buffer: Buffer.from(new Uint8Array(ab)),
+      contentType: v.type,
+    });
   }
-  return { buffers };
+  return { files };
+}
+
+/**
+ * Sube un set de fotos a Blob, ignorando errores individuales para no
+ * abortar la persistencia entera (preferimos guardar parcialmente).
+ */
+async function uploadPhotoSet(
+  files: CollectedFile[],
+  side: "before" | "after",
+  reportId: string,
+): Promise<StoredPhotoRef[]> {
+  const out: StoredPhotoRef[] = [];
+  for (let i = 0; i < files.length; i++) {
+    try {
+      const ref = await uploadServicioPhoto(
+        files[i].buffer,
+        files[i].contentType,
+        side,
+        reportId,
+        i,
+      );
+      if (ref) out.push(ref);
+    } catch (err) {
+      console.error(`[servicio-report] photo upload failed (${side}#${i})`, err);
+    }
+  }
+  return out;
+}
+
+/**
+ * Convierte el string de fecha capturado en el form a un DateTime válido.
+ * Soporta "YYYY-MM-DD" (date input) y cualquier ISO completo.
+ * Si falla, devuelve `now`.
+ */
+function parseServiceDate(raw: string): Date {
+  const trimmed = raw.trim();
+  if (!trimmed) return new Date();
+  const direct = new Date(trimmed);
+  if (!Number.isNaN(direct.getTime())) return direct;
+  const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const d = new Date(`${trimmed}T12:00:00Z`);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date();
 }
 
 export async function POST(req: Request) {
@@ -162,12 +221,13 @@ export async function POST(req: Request) {
     invoiceSubtotal,
     depositCredit,
     amountDue,
-    photosBefore: before.buffers,
-    photosAfter: after.buffers,
+    photosBefore: before.files.map((f) => f.buffer),
+    photosAfter: after.files.map((f) => f.buffer),
   };
 
+  let pdfBuffer: Buffer;
   try {
-    const pdfBuffer = await generateServicioPdf(payload);
+    pdfBuffer = await generateServicioPdf(payload);
     await sendServicioReportEmail({
       to: parsed.clientEmail,
       restaurantName: parsed.restaurantName,
@@ -181,6 +241,59 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: c.apiGenerateFailed }, { status: 500 });
+  }
+
+  // Persistencia best-effort: si Blob/DB fallan, NO devolvemos error porque
+  // el reporte ya se envió por correo al cliente. Sólo lo logueamos para
+  // que el operador lo investigue.
+  try {
+    const serviceDateParsed = parseServiceDate(parsed.serviceDate);
+    const purgeAfter = new Date(serviceDateParsed.getTime() + RETENTION_MS);
+    const reportId = (
+      globalThis.crypto?.randomUUID?.() ??
+      // Fallback determinístico si crypto no está disponible.
+      `srv_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+    ).replace(/-/g, "");
+
+    const [photosBeforeRefs, photosAfterRefs, pdfRef] = await Promise.all([
+      uploadPhotoSet(before.files, "before", reportId),
+      uploadPhotoSet(after.files, "after", reportId),
+      uploadServicioPdf(pdfBuffer, reportId).catch((err) => {
+        console.error("[servicio-report] PDF upload failed", err);
+        return null;
+      }),
+    ]);
+
+    await prisma.servicioReport.create({
+      data: {
+        id: reportId,
+        clientEmail: normalizeEmail(parsed.clientEmail),
+        restaurantName: parsed.restaurantName,
+        technicianName: parsed.technicianName,
+        serviceDate: serviceDateParsed,
+        serviceLanguage: language,
+        bookingReference: parsed.bookingReference || null,
+        checklistAirGap: parsed.checklistAirGap,
+        checklistHandSink: parsed.checklistHandSink,
+        checklistGreaseTrap: parsed.checklistGreaseTrap,
+        notes: parsed.notes ? parsed.notes : null,
+        laborHours: parsed.laborHours,
+        laborSubtotal,
+        materialsSubtotal: parsed.materialsSubtotal,
+        partsSubtotal: parsed.partsSubtotal,
+        otherChargesSubtotal: parsed.otherChargesSubtotal,
+        invoiceSubtotal,
+        depositCredit,
+        amountDue,
+        pdfUrl: pdfRef?.url ?? null,
+        pdfPathname: pdfRef?.pathname ?? null,
+        photosBefore: photosBeforeRefs,
+        photosAfter: photosAfterRefs,
+        purgeAfter,
+      },
+    });
+  } catch (err) {
+    console.error("[servicio-report] persistence failed (email already sent)", err);
   }
 
   return NextResponse.json({

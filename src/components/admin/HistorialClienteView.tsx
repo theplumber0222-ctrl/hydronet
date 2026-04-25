@@ -44,10 +44,38 @@ type WorkOrderH = {
   createdAt: string;
 };
 
+type StoredPhotoRefH = {
+  url: string;
+  pathname: string;
+  contentType: string;
+  size: number;
+};
+
+type ServicioReportH = {
+  id: string;
+  clientEmail: string;
+  restaurantName: string;
+  technicianName: string;
+  serviceDate: string;
+  serviceLanguage: string;
+  bookingReference: string | null;
+  checklistAirGap: string;
+  checklistHandSink: string;
+  checklistGreaseTrap: string;
+  amountDue: number;
+  invoiceSubtotal: number;
+  depositCredit: number;
+  pdfUrl: string | null;
+  photosBefore: StoredPhotoRefH[];
+  photosAfter: StoredPhotoRefH[];
+  createdAt: string;
+};
+
 type TimelineItem =
   | { kind: "booking"; at: string; data: BookingH }
   | { kind: "estimate"; at: string; data: EstimateH }
-  | { kind: "workOrder"; at: string; data: WorkOrderH };
+  | { kind: "workOrder"; at: string; data: WorkOrderH }
+  | { kind: "servicioReport"; at: string; data: ServicioReportH };
 
 export function HistorialClienteView() {
   const { t, locale } = useI18n();
@@ -59,6 +87,7 @@ export function HistorialClienteView() {
   const [bookings, setBookings] = useState<BookingH[]>([]);
   const [estimates, setEstimates] = useState<EstimateH[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrderH[]>([]);
+  const [servicioReports, setServicioReports] = useState<ServicioReportH[]>([]);
   const [loadedEmail, setLoadedEmail] = useState<string | null>(null);
 
   const persistKey = useCallback(() => {
@@ -129,11 +158,14 @@ export function HistorialClienteView() {
     for (const w of workOrders) {
       items.push({ kind: "workOrder", at: w.authorizedAt, data: w });
     }
+    for (const s of servicioReports) {
+      items.push({ kind: "servicioReport", at: s.serviceDate, data: s });
+    }
     items.sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
     );
     return items;
-  }, [bookings, estimates, workOrders]);
+  }, [bookings, estimates, workOrders, servicioReports]);
 
   async function onLoad() {
     const q = emailInput.trim();
@@ -162,6 +194,9 @@ export function HistorialClienteView() {
       setBookings(Array.isArray(data.bookings) ? data.bookings : []);
       setEstimates(Array.isArray(data.estimates) ? data.estimates : []);
       setWorkOrders(Array.isArray(data.workOrders) ? data.workOrders : []);
+      setServicioReports(
+        Array.isArray(data.servicioReports) ? data.servicioReports : [],
+      );
       setLoadedEmail(typeof data.email === "string" ? data.email : q);
     } catch {
       setError(t("tabletCita.networkError"));
@@ -342,30 +377,172 @@ export function HistorialClienteView() {
                     </li>
                   );
                 }
-                const w = item.data;
+                if (item.kind === "workOrder") {
+                  const w = item.data;
+                  return (
+                    <li key={`w-${w.id}-${idx}`} className="relative">
+                      <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {t("adminHistorial.kindWorkOrder")} · {fmt(item.at)}
+                      </p>
+                      <p className="mt-1 font-medium text-slate-100">
+                        {w.restaurantName}
+                      </p>
+                      <p className="text-xs text-slate-500">{w.id}</p>
+                      <p className="mt-1 text-sm text-slate-400">
+                        ${usd(w.totalCents)} · {w.status}
+                        {w.workerId ? ` · ${w.workerId}` : ""}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {t("adminHistorial.estimateRef")}: {w.estimateId}
+                      </p>
+                    </li>
+                  );
+                }
+                const s = item.data;
                 return (
-                  <li key={`w-${w.id}-${idx}`} className="relative">
-                    <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  <li key={`s-${s.id}-${idx}`} className="relative">
+                    <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full bg-fuchsia-500" />
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      {t("adminHistorial.kindWorkOrder")} · {fmt(item.at)}
+                      {t("adminHistorial.kindServicioReport")} · {fmt(item.at)}
                     </p>
                     <p className="mt-1 font-medium text-slate-100">
-                      {w.restaurantName}
+                      {s.restaurantName}
                     </p>
-                    <p className="text-xs text-slate-500">{w.id}</p>
+                    <p className="text-xs text-slate-500">{s.id}</p>
                     <p className="mt-1 text-sm text-slate-400">
-                      ${usd(w.totalCents)} · {w.status}
-                      {w.workerId ? ` · ${w.workerId}` : ""}
+                      {t("adminHistorial.technician")}: {s.technicianName}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {t("adminHistorial.estimateRef")}: {w.estimateId}
+                      {t("adminHistorial.serviceDate")}: {fmt(s.serviceDate)}
                     </p>
+                    {s.bookingReference && (
+                      <p className="text-xs text-slate-500">
+                        {t("adminHistorial.bookingRefShort")}: {s.bookingReference}
+                      </p>
+                    )}
+                    <p className="mt-1 text-sm text-slate-300">
+                      {t("adminHistorial.amountDue")}: ${s.amountDue.toFixed(2)}
+                    </p>
+                    <ChecklistRow t={t} report={s} />
+                    <PhotoStrip
+                      title={t("adminHistorial.photosBefore")}
+                      photos={s.photosBefore}
+                      noPhotosLabel={t("adminHistorial.noPhotos")}
+                    />
+                    <PhotoStrip
+                      title={t("adminHistorial.photosAfter")}
+                      photos={s.photosAfter}
+                      noPhotosLabel={t("adminHistorial.noPhotos")}
+                    />
+                    {s.pdfUrl && (
+                      <a
+                        href={s.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-sky-500/50 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-200 hover:bg-sky-500/20"
+                      >
+                        {t("adminHistorial.downloadPdf")}
+                      </a>
+                    )}
                   </li>
                 );
               })}
             </ol>
           )}
         </section>
+      )}
+    </div>
+  );
+}
+
+function ChecklistRow({
+  t,
+  report,
+}: {
+  t: (path: string) => string;
+  report: ServicioReportH;
+}) {
+  const items: Array<{ key: string; label: string; status: string }> = [
+    {
+      key: "ag",
+      label: t("adminHistorial.chkAirGap"),
+      status: report.checklistAirGap,
+    },
+    {
+      key: "hs",
+      label: t("adminHistorial.chkHandSink"),
+      status: report.checklistHandSink,
+    },
+    {
+      key: "gt",
+      label: t("adminHistorial.chkGreaseTrap"),
+      status: report.checklistGreaseTrap,
+    },
+  ];
+  function statusWord(s: string) {
+    if (s === "pass") return t("adminHistorial.chkPass");
+    if (s === "fail") return t("adminHistorial.chkFail");
+    return t("adminHistorial.chkNa");
+  }
+  function statusClass(s: string) {
+    if (s === "pass")
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+    if (s === "fail")
+      return "border-red-500/40 bg-red-500/10 text-red-200";
+    return "border-slate-600 bg-slate-700/30 text-slate-300";
+  }
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {items.map((it) => (
+        <span
+          key={it.key}
+          className={`rounded-md border px-2 py-0.5 text-[11px] ${statusClass(it.status)}`}
+        >
+          {it.label}: {statusWord(it.status)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function PhotoStrip({
+  title,
+  photos,
+  noPhotosLabel,
+}: {
+  title: string;
+  photos: StoredPhotoRefH[];
+  noPhotosLabel: string;
+}) {
+  return (
+    <div className="mt-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {title} ({photos.length})
+      </p>
+      {photos.length === 0 ? (
+        <p className="mt-1 text-xs text-slate-500">{noPhotosLabel}</p>
+      ) : (
+        <div className="mt-1 flex flex-wrap gap-2">
+          {photos.map((p) => (
+            <a
+              key={p.url}
+              href={p.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-md border border-slate-600 hover:border-sky-400"
+              title={p.pathname}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.url}
+                alt={title}
+                className="h-16 w-16 object-cover"
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
       )}
     </div>
   );

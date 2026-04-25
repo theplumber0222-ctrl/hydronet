@@ -148,3 +148,49 @@ model AuthorizedWorkOrder {
 
   @@index([email])
 }
+
+/**
+ * Reporte de servicio en sitio enviado por el técnico desde /admin/servicio.
+ * Se guarda tras email OK; las fotos y el PDF viven en Vercel Blob.
+ * `purgeAfter = serviceDate + 2 años` y un cron borra archivos + registro.
+ */
+model ServicioReport {
+  id                   String   @id @default(cuid())
+  /** Email normalizado a lowercase para búsqueda en historial. */
+  clientEmail          String
+  restaurantName       String
+  technicianName       String
+  /** Fecha del servicio capturada en el formulario. */
+  serviceDate          DateTime
+  /** "en" | "es" — idioma usado al generar el PDF/correo. */
+  serviceLanguage      String
+  /** Referencia opcional a la reserva. */
+  bookingReference     String?
+  /** "pass" | "fail" | "na" */
+  checklistAirGap      String
+  checklistHandSink    String
+  checklistGreaseTrap  String
+  notes                String?  @db.Text
+  laborHours           Float    @default(0)
+  laborSubtotal        Float    @default(0)
+  materialsSubtotal    Float    @default(0)
+  partsSubtotal        Float    @default(0)
+  otherChargesSubtotal Float    @default(0)
+  invoiceSubtotal      Float    @default(0)
+  depositCredit        Float    @default(0)
+  amountDue            Float    @default(0)
+  /** URL pública en Vercel Blob del PDF firmado/generado. */
+  pdfUrl               String?
+  /** Pathname Blob para borrado vía del() en cron de purga. */
+  pdfPathname          String?
+  /** [{ url, pathname, contentType, size }] */
+  photosBefore         Json     @default("[]")
+  photosAfter          Json     @default("[]")
+  /** serviceDate + 2 años. El cron purga registros con purgeAfter < now. */
+  purgeAfter           DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([clientEmail])
+  @@index([purgeAfter])
+}

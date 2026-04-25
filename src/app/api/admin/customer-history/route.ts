@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeTabletRequest } from "@/lib/tablet-worker-auth";
 import { normalizeEmail } from "@/lib/normalize-email";
+import { coercePhotoRefs } from "@/lib/servicio-report-storage";
 
 export const runtime = "nodejs";
 
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
 
   const email = normalizeEmail(emailRaw);
 
-  const [bookings, estimates, workOrders] = await Promise.all([
+  const [bookings, estimates, workOrders, servicioReportsRaw] = await Promise.all([
     prisma.booking.findMany({
       where: { email: { equals: email, mode: "insensitive" } },
       orderBy: { createdAt: "desc" },
@@ -70,12 +71,57 @@ export async function GET(req: Request) {
         createdAt: true,
       },
     }),
+    prisma.servicioReport.findMany({
+      where: { clientEmail: email },
+      orderBy: { serviceDate: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        clientEmail: true,
+        restaurantName: true,
+        technicianName: true,
+        serviceDate: true,
+        serviceLanguage: true,
+        bookingReference: true,
+        checklistAirGap: true,
+        checklistHandSink: true,
+        checklistGreaseTrap: true,
+        amountDue: true,
+        invoiceSubtotal: true,
+        depositCredit: true,
+        pdfUrl: true,
+        photosBefore: true,
+        photosAfter: true,
+        createdAt: true,
+      },
+    }),
   ]);
+
+  const servicioReports = servicioReportsRaw.map((r) => ({
+    id: r.id,
+    clientEmail: r.clientEmail,
+    restaurantName: r.restaurantName,
+    technicianName: r.technicianName,
+    serviceDate: r.serviceDate.toISOString(),
+    serviceLanguage: r.serviceLanguage,
+    bookingReference: r.bookingReference,
+    checklistAirGap: r.checklistAirGap,
+    checklistHandSink: r.checklistHandSink,
+    checklistGreaseTrap: r.checklistGreaseTrap,
+    amountDue: r.amountDue,
+    invoiceSubtotal: r.invoiceSubtotal,
+    depositCredit: r.depositCredit,
+    pdfUrl: r.pdfUrl,
+    photosBefore: coercePhotoRefs(r.photosBefore),
+    photosAfter: coercePhotoRefs(r.photosAfter),
+    createdAt: r.createdAt.toISOString(),
+  }));
 
   return NextResponse.json({
     email,
     bookings,
     estimates,
     workOrders,
+    servicioReports,
   });
 }
