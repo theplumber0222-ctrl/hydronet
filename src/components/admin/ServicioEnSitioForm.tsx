@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { upload as blobUpload } from "@vercel/blob/client";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
 import {
   clearEntireServicioDraft,
@@ -16,6 +17,62 @@ import {
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
 import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
+
+type UploadedPhotoRef = {
+  url: string;
+  pathname: string;
+  contentType: string;
+  size: number;
+};
+
+function extFromMime(mime: string): string {
+  const m = (mime || "").toLowerCase();
+  if (m === "image/jpeg" || m === "image/jpg") return "jpg";
+  if (m === "image/png") return "png";
+  if (m === "image/webp") return "webp";
+  if (m === "image/heic") return "heic";
+  if (m === "image/heif") return "heif";
+  if (m === "image/gif") return "gif";
+  return "bin";
+}
+
+function generateReportId(): string {
+  const c = globalThis.crypto;
+  if (c?.randomUUID) return c.randomUUID().replace(/-/g, "");
+  return `srv${Date.now()}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Sube las fotos de un lado directamente a Vercel Blob desde el navegador.
+ * Devuelve las refs que luego van en el JSON al endpoint del reporte (ya
+ * sin pasar por el body del POST principal).
+ */
+async function uploadPhotoSideDirect(
+  side: "before" | "after",
+  files: File[],
+  reportId: string,
+  adminKey: string,
+): Promise<UploadedPhotoRef[]> {
+  const out: UploadedPhotoRef[] = [];
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const ext = extFromMime(f.type);
+    const path = `servicio-reports/${reportId}/${side}/${String(i).padStart(2, "0")}.${ext}`;
+    const result = await blobUpload(path, f, {
+      access: "public",
+      handleUploadUrl: "/api/admin/servicio/photo-upload",
+      contentType: f.type || "image/jpeg",
+      headers: adminKey ? { "x-hydronet-admin-key": adminKey } : undefined,
+    });
+    out.push({
+      url: result.url,
+      pathname: result.pathname,
+      contentType: f.type || "image/jpeg",
+      size: f.size,
+    });
+  }
+  return out;
+}
 
 type ChecklistKey = "airGap" | "handSink" | "greaseTrap";
 
@@ -431,33 +488,58 @@ export function ServicioEnSitioForm() {
       }
     }
 
-    const fd = new FormData();
-    fd.set("serviceLanguage", serviceLanguage);
-    fd.set("restaurantName", restaurantName);
-    fd.set("bookingReference", bookingReference.trim());
-    fd.set("clientEmail", clientEmail);
-    fd.set("technicianName", technicianName);
-    fd.set("serviceDate", serviceDate);
-    fd.set("checklistAirGap", checklist.airGap);
-    fd.set("checklistHandSink", checklist.handSink);
-    fd.set("checklistGreaseTrap", checklist.greaseTrap);
-    fd.set("notes", notes);
-    fd.set("laborHours", String(laborH));
-    fd.set("materialsSubtotal", String(materialsN));
-    fd.set("partsSubtotal", String(partsN));
-    fd.set("otherChargesSubtotal", String(otherN));
-    photosBefore.forEach((f, i) => fd.append(`photo_before_${i}`, f));
-    photosAfter.forEach((f, i) => fd.append(`photo_after_${i}`, f));
-
     setLoading(true);
     try {
-      const headers: HeadersInit = {};
+      // 1) Sube fotos directo a Vercel Blob desde el navegador para evitar
+      //    FUNCTION_PAYLOAD_TOO_LARGE en /api/admin/servicio/report.
+      const reportId = generateReportId();
+      let photosBeforeRefs: UploadedPhotoRef[] = [];
+      let photosAfterRefs: UploadedPhotoRef[] = [];
+      try {
+        photosBeforeRefs = await uploadPhotoSideDirect(
+          "before",
+          photosBefore,
+          reportId,
+          key,
+        );
+        photosAfterRefs = await uploadPhotoSideDirect(
+          "after",
+          photosAfter,
+          reportId,
+          key,
+        );
+      } catch (uploadErr) {
+        console.error("[servicio] photo upload failed", uploadErr);
+        setError(c.networkError);
+        return;
+      }
+
+      // 2) Body ligero (solo metadata + URLs Blob) al endpoint del reporte.
+      const headers: HeadersInit = { "Content-Type": "application/json" };
       if (key) headers["x-hydronet-admin-key"] = key;
 
       const res = await fetch("/api/admin/servicio/report", {
         method: "POST",
         headers,
-        body: fd,
+        body: JSON.stringify({
+          reportId,
+          serviceLanguage,
+          restaurantName,
+          bookingReference: bookingReference.trim(),
+          clientEmail,
+          technicianName,
+          serviceDate,
+          checklistAirGap: checklist.airGap,
+          checklistHandSink: checklist.handSink,
+          checklistGreaseTrap: checklist.greaseTrap,
+          notes,
+          laborHours: laborH,
+          materialsSubtotal: materialsN,
+          partsSubtotal: partsN,
+          otherChargesSubtotal: otherN,
+          photosBefore: photosBeforeRefs,
+          photosAfter: photosAfterRefs,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
