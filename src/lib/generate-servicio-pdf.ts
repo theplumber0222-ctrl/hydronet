@@ -133,6 +133,18 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.text(c.pdfBillingTitle);
     doc.moveDown(0.3);
     doc.font("Helvetica").fontSize(10).fillColor("#0f172a");
+    // 1) Dispatch fee (monto de referencia = depositCredit, mismo crédito aplicado en §7; no se suma al subtotal de trabajo)
+    doc.text(
+      `${c.pdfDispatchFeeLine}  $${data.depositCredit.toFixed(2)} USD`,
+    );
+    doc.moveDown(0.4);
+    // 2) Mano de obra: horas, tarifa, total (valores: laborHours, hourlyRateUsd, laborSubtotal)
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10.5)
+      .fillColor("#0f172a")
+      .text(c.pdfManoDeObraHeader);
+    doc.font("Helvetica").fontSize(10);
     doc.text(c.pdfLaborHoursLine(String(data.laborHours)));
     doc.text(
       `${c.pdfHourlyRateLine}  $${data.hourlyRateUsd.toFixed(2)} USD`,
@@ -140,6 +152,8 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.text(
       `${c.pdfLaborTotalLine}  $${data.laborSubtotal.toFixed(2)} USD`,
     );
+    doc.moveDown(0.25);
+    // 3–5) Materiales, partes, otros (materialsSubtotal, partsSubtotal, otherChargesSubtotal)
     doc.text(
       `${c.pdfMaterialsLine}  $${data.materialsSubtotal.toFixed(2)} USD`,
     );
@@ -147,17 +161,21 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.text(
       `${c.pdfOtherLine}  $${data.otherChargesSubtotal.toFixed(2)} USD`,
     );
+    doc.moveDown(0.25);
+    // 6) Subtotal de servicio = invoiceSubtotal (labor+mat+partes+otros; sin crédito aún)
     doc.font("Helvetica-Bold");
     doc.text(
       `${c.pdfServiceSubtotalLine}  $${data.invoiceSubtotal.toFixed(2)} USD`,
     );
+    // 7) Crédito dispatch = depositCredit (se resta una sola vez)
     doc.font("Helvetica");
     doc.text(
       `${c.pdfDepositLine}  -$${data.depositCredit.toFixed(2)} USD`,
     );
+    // 8) Total a pagar = amountDue (0 si el saldo quedó en cero; si card_paid, monto que correspondía al cobro)
     doc.font("Helvetica-Bold").fontSize(12);
     doc.text(
-      `${c.pdfTotalLine}        $${data.amountDue.toFixed(2)} USD`,
+      `${c.pdfTotalLine}  $${data.amountDue.toFixed(2)} USD`,
     );
     doc.moveDown(0.4);
     doc.font("Helvetica").fontSize(10).fillColor("#0f172a");

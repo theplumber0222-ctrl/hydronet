@@ -112,6 +112,28 @@ export function HistorialClienteView() {
     }
   }, [workerId]);
 
+  /** Si el usuario edita el correo respecto al último carga, no mostrar el listado viejo. */
+  const onEmailInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const v = e.target.value;
+      setEmailInput(v);
+      const t = v.trim();
+      if (!loadedEmail) return;
+      if (
+        !t ||
+        t.toLowerCase() !== loadedEmail.toLowerCase()
+      ) {
+        setBookings([]);
+        setEstimates([]);
+        setWorkOrders([]);
+        setServicioReports([]);
+        setLoadedEmail(null);
+        setError(null);
+      }
+    },
+    [loadedEmail],
+  );
+
   const buildHeaders = useCallback((): HeadersInit => {
     const headers: HeadersInit = {
       "x-hydronet-lang": locale,
@@ -297,7 +319,7 @@ export function HistorialClienteView() {
             className="input-field mt-0 flex-1"
             type="email"
             value={emailInput}
-            onChange={(e) => setEmailInput(e.target.value)}
+            onChange={onEmailInputChange}
             placeholder="cliente@restaurant.com"
           />
           <button

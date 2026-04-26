@@ -85,6 +85,10 @@ type Block = {
   pdfServiceDate: string;
   pdfChecklistTitle: string;
   pdfBillingTitle: string;
+  /** Tarifa de dispatch (mismo monto de referencia que el crédito; no se suma al subtotal de trabajo). */
+  pdfDispatchFeeLine: string;
+  /** Encabezado de bloque antes de horas/tarifa/total de mano de obra. */
+  pdfManoDeObraHeader: string;
   pdfSubtotalLine: string;
   pdfLaborHoursLine: (hours: string) => string;
   pdfHourlyRateLine: string;
@@ -217,6 +221,8 @@ const EN: Block = {
   pdfServiceDate: "Service date",
   pdfChecklistTitle: "Internal inspection checklist",
   pdfBillingTitle: "Billing summary",
+  pdfDispatchFeeLine: "Dispatch fee (reference amount, credited below):",
+  pdfManoDeObraHeader: "Labor",
   pdfSubtotalLine: "Work subtotal:",
   pdfLaborHoursLine: (h) => `Labor hours:  ${h}`,
   pdfHourlyRateLine: "Hourly rate (USD):",
@@ -225,10 +231,12 @@ const EN: Block = {
   pdfPartsLine: "Parts (USD):",
   pdfOtherLine: "Other charges (USD):",
   pdfServiceSubtotalLine: "Service subtotal (before credit):",
-  pdfDepositLine: "Dispatch fee credit ($195):",
-  pdfTotalLine: "Balance / amount due:",
-  pdfPaymentStatusPaid: "Payment status: Paid by card (this report).",
-  pdfPaymentStatusNoDue: "Payment status: No balance due — no card charge required.",
+  pdfDepositLine: "Dispatch fee credit (applied to balance):",
+  pdfTotalLine: "Total to pay (balance after credit):",
+  pdfPaymentStatusPaid:
+    "Payment: The balance above was paid by card in connection with this report.",
+  pdfPaymentStatusNoDue:
+    "Payment: No balance was due; no card charge. Amount shown is $0.00.",
   pdfNotes: "Notes",
   pdfPhotosBefore: "Photos — Before",
   pdfPhotosAfter: "Photos — After",
@@ -343,6 +351,8 @@ const ES: Block = {
   pdfServiceDate: "Fecha de servicio",
   pdfChecklistTitle: "Lista de verificación interna",
   pdfBillingTitle: "Resumen de cobro",
+  pdfDispatchFeeLine: "Dispatch fee (monto de referencia, acreditable abajo):",
+  pdfManoDeObraHeader: "Mano de obra",
   pdfSubtotalLine: "Subtotal del trabajo:",
   pdfLaborHoursLine: (h) => `Horas de mano de obra:  ${h}`,
   pdfHourlyRateLine: "Tarifa por hora (USD):",
@@ -351,10 +361,12 @@ const ES: Block = {
   pdfPartsLine: "Partes / repuestos (USD):",
   pdfOtherLine: "Otros cargos (USD):",
   pdfServiceSubtotalLine: "Subtotal de servicio (antes del crédito):",
-  pdfDepositLine: "Crédito Dispatch fee ($195):",
-  pdfTotalLine: "Saldo / total a pagar:",
-  pdfPaymentStatusPaid: "Estado de pago: Pagado con tarjeta (este informe).",
-  pdfPaymentStatusNoDue: "Estado de pago: Sin saldo pendiente — no se requirió cobro con tarjeta.",
+  pdfDepositLine: "Crédito Dispatch fee (aplicado al saldo):",
+  pdfTotalLine: "Total a pagar (saldo tras el crédito):",
+  pdfPaymentStatusPaid:
+    "Pago: el saldo indicado se cobró con tarjeta al enviar este informe.",
+  pdfPaymentStatusNoDue:
+    "Pago: no había saldo que cobrar; no se usó tarjeta. El importe mostrado es $0,00.",
   pdfNotes: "Notas",
   pdfPhotosBefore: "Fotografías — Antes",
   pdfPhotosAfter: "Fotografías — Después",

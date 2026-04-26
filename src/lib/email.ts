@@ -157,14 +157,15 @@ export async function sendServicioReportEmail(params: {
 
   const c = servicioReportCopy(params.language);
   const legal = c.depositLegal;
+  const subject = c.emailSubject(params.restaurantName);
   const filenamePrefix =
     params.language === "en" ? "HydroNet-OnSite" : "HydroNet-Servicio";
   const filename = `${filenamePrefix}-${params.restaurantName.replace(/[^\w\-]+/g, "_").slice(0, 40)}-${Date.now()}.pdf`;
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: `HydroNet Plumbing <${CONTACT}>`,
     to: params.to,
-    subject: c.emailSubject(params.restaurantName),
+    subject,
     html: `
       <div style="font-family:system-ui,sans-serif;background:#1F2937;color:#e5e7eb;padding:24px;">
         ${emailLogoHtml()}
@@ -189,6 +190,25 @@ export async function sendServicioReportEmail(params: {
         content: params.pdfBuffer,
       },
     ],
+  });
+
+  if (error) {
+    const msg =
+      typeof (error as { message?: string }).message === "string"
+        ? (error as { message: string }).message
+        : String(error);
+    console.error("[servicio-email] Resend rejected send", {
+      to: params.to,
+      subject,
+      error: msg,
+    });
+    throw new Error(`Servicio report email was not sent: ${msg}`);
+  }
+
+  console.log("[servicio-email] Resend accepted", {
+    to: params.to,
+    resendId: data?.id ?? null,
+    subject,
   });
 }
 

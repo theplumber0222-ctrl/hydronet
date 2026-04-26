@@ -659,10 +659,10 @@ export function ServicioEnSitioForm() {
         const body: Record<string, unknown> = {
           reportId,
           serviceLanguage,
-          restaurantName,
+          restaurantName: restaurantName.trim(),
           bookingReference: bookingReference.trim(),
-          clientEmail,
-          technicianName,
+          clientEmail: clientEmail.trim(),
+          technicianName: technicianName.trim(),
           serviceDate,
           checklistAirGap: checklist.airGap,
           checklistHandSink: checklist.handSink,
@@ -707,7 +707,7 @@ export function ServicioEnSitioForm() {
           return false;
         }
         setStatus(
-          buildServicioSuccessMessage(serviceLanguage, clientEmail),
+          buildServicioSuccessMessage(serviceLanguage, clientEmail.trim()),
         );
         try {
           sessionStorage.removeItem(STORAGE_CHECKOUT);
