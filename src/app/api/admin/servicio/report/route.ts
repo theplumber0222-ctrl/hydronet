@@ -8,7 +8,8 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
-import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
+import { computeServicioBilling } from "@/lib/servicio-billing-math";
+import { getStripe, isStripeSecretKeyFailure } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { normalizeEmail } from "@/lib/normalize-email";
 import {
@@ -84,6 +85,49 @@ function parseServiceDate(raw: string): Date {
   return new Date();
 }
 
+/**
+ * Comprueba que el Checkout de Stripe se pagó y que los metadatos del cobro
+ * de saldo (admin-servicio-balance) coinciden con el cálculo del informe.
+ * No se usa `amount_total` (puede incluir impuestos) — sí `metadata.amount_due_cents`.
+ */
+async function assertPaidBalanceCheckoutSession(
+  sessionId: string,
+  amountDue: number,
+  clientEmail: string,
+): Promise<boolean> {
+  let stripe: ReturnType<typeof getStripe>;
+  try {
+    stripe = getStripe();
+  } catch {
+    return false;
+  }
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["line_items"],
+    });
+    if (session.payment_status !== "paid") return false;
+    if (session.metadata?.source !== "admin-servicio-balance") return false;
+    const expectedCents = Math.round(amountDue * 100);
+    const metaCents = parseInt(session.metadata?.amount_due_cents ?? "", 10);
+    if (Number.isNaN(metaCents) || metaCents !== expectedCents) {
+      return false;
+    }
+    const em = (session.customer_email || session.customer_details?.email || "")
+      .trim()
+      .toLowerCase();
+    const want = clientEmail.trim().toLowerCase();
+    if (em && em !== want) return false;
+    return true;
+  } catch (err) {
+    if (isStripeSecretKeyFailure(err)) {
+      console.error("[servicio-report] stripe retrieve failed (key)", err);
+    } else {
+      console.error("[servicio-report] stripe session retrieve failed", err);
+    }
+    return false;
+  }
+}
+
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -132,6 +176,8 @@ export async function POST(req: Request) {
     materialsSubtotal: money,
     partsSubtotal: money,
     otherChargesSubtotal: money,
+    /** Si hay saldo a cobrar: id de sesión de Checkout pagada. */
+    stripeCheckoutSessionId: z.string().min(1).max(200).optional(),
     photosBefore: z.array(photoRefSchema).max(MAX_FILES_PER_SIDE),
     photosAfter: z.array(photoRefSchema).max(MAX_FILES_PER_SIDE),
   });
@@ -146,21 +192,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: c.apiValidationFailed }, { status: 400 });
   }
 
-  const depositCredit = CONNECT_DEPOSIT_USD;
-  const laborSubtotal =
-    Math.round(parsed.laborHours * HOURLY_PLUMBING_RATE_USD * 100) / 100;
-  const invoiceSubtotal =
-    Math.round(
-      (laborSubtotal +
-        parsed.materialsSubtotal +
-        parsed.partsSubtotal +
-        parsed.otherChargesSubtotal) *
-        100,
-    ) / 100;
-  const amountDue = Math.max(
-    0,
-    Math.round((invoiceSubtotal - depositCredit) * 100) / 100,
-  );
+  const snap = computeServicioBilling({
+    laborHours: parsed.laborHours,
+    materialsSubtotal: parsed.materialsSubtotal,
+    partsSubtotal: parsed.partsSubtotal,
+    otherChargesSubtotal: parsed.otherChargesSubtotal,
+  });
+  const {
+    laborTotal: laborSubtotal,
+    subtotal: invoiceSubtotal,
+    dispatchCredit: depositCredit,
+    amountDue,
+  } = snap;
+
+  if (snap.amountDue > 0) {
+    const sid = parsed.stripeCheckoutSessionId?.trim();
+    if (!sid) {
+      return NextResponse.json({ error: c.apiPaymentRequired }, { status: 400 });
+    }
+    const ok = await assertPaidBalanceCheckoutSession(
+      sid,
+      snap.amountDue,
+      parsed.clientEmail,
+    );
+    if (!ok) {
+      return NextResponse.json(
+        { error: c.apiPaymentNotVerified },
+        { status: 402 },
+      );
+    }
+  }
 
   // Reconstruye Buffers de las fotos para el PDF descargando desde Blob.
   // Cada URL ya está alojada en Vercel Blob (validado por zod).
@@ -180,9 +241,17 @@ export async function POST(req: Request) {
     checklistHandSink: parsed.checklistHandSink as ChecklistStatus,
     checklistGreaseTrap: parsed.checklistGreaseTrap as ChecklistStatus,
     notes: parsed.notes ?? "",
+    hourlyRateUsd: snap.hourlyRateUsd,
+    laborHours: snap.laborHours,
+    laborSubtotal,
+    materialsSubtotal: parsed.materialsSubtotal,
+    partsSubtotal: parsed.partsSubtotal,
+    otherChargesSubtotal: parsed.otherChargesSubtotal,
     invoiceSubtotal,
     depositCredit,
     amountDue,
+    paymentStatus:
+      snap.amountDue > 0 ? ("card_paid" as const) : ("no_balance_due" as const),
     photosBefore: photoBuffersBefore.filter((b): b is Buffer => b !== null),
     photosAfter: photoBuffersAfter.filter((b): b is Buffer => b !== null),
   };

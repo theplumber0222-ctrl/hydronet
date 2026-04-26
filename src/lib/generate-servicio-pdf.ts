@@ -132,16 +132,39 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#0ea5e9");
     doc.text(c.pdfBillingTitle);
     doc.moveDown(0.3);
-    doc.font("Helvetica").fontSize(11).fillColor("#0f172a");
+    doc.font("Helvetica").fontSize(10).fillColor("#0f172a");
+    doc.text(c.pdfLaborHoursLine(String(data.laborHours)));
     doc.text(
-      `${c.pdfSubtotalLine}     $${data.invoiceSubtotal.toFixed(2)} USD`,
+      `${c.pdfHourlyRateLine}  $${data.hourlyRateUsd.toFixed(2)} USD`,
     );
+    doc.text(
+      `${c.pdfLaborTotalLine}  $${data.laborSubtotal.toFixed(2)} USD`,
+    );
+    doc.text(
+      `${c.pdfMaterialsLine}  $${data.materialsSubtotal.toFixed(2)} USD`,
+    );
+    doc.text(`${c.pdfPartsLine}  $${data.partsSubtotal.toFixed(2)} USD`);
+    doc.text(
+      `${c.pdfOtherLine}  $${data.otherChargesSubtotal.toFixed(2)} USD`,
+    );
+    doc.font("Helvetica-Bold");
+    doc.text(
+      `${c.pdfServiceSubtotalLine}  $${data.invoiceSubtotal.toFixed(2)} USD`,
+    );
+    doc.font("Helvetica");
     doc.text(
       `${c.pdfDepositLine}  -$${data.depositCredit.toFixed(2)} USD`,
     );
     doc.font("Helvetica-Bold").fontSize(12);
     doc.text(
       `${c.pdfTotalLine}        $${data.amountDue.toFixed(2)} USD`,
+    );
+    doc.moveDown(0.4);
+    doc.font("Helvetica").fontSize(10).fillColor("#0f172a");
+    doc.text(
+      data.paymentStatus === "card_paid"
+        ? c.pdfPaymentStatusPaid
+        : c.pdfPaymentStatusNoDue,
     );
     doc.moveDown(0.5);
     doc.font("Helvetica").fontSize(8).fillColor("#64748b");

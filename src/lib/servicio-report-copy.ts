@@ -61,6 +61,17 @@ type Block = {
   invoicePreviewHint: string;
   submitLoading: string;
   submitIdle: string;
+  /** Botón principal si hay saldo a cobrar con tarjeta */
+  submitChargeAndSend: string;
+  stepCalculating: string;
+  stepCharging: string;
+  stepUploading: string;
+  stepGeneratingReport: string;
+  stepFinishing: string;
+  /** Fallo al crear sesión Stripe antes de redirigir */
+  chargeStartError: string;
+  /** Tras pago, falló generar/enviar: reintento sin volver a cobrar */
+  postCheckoutRetry: string;
   networkError: string;
   removePhotoAria: string;
   /** Deposit legal paragraph (same substance as public checkout copy) */
@@ -75,8 +86,17 @@ type Block = {
   pdfChecklistTitle: string;
   pdfBillingTitle: string;
   pdfSubtotalLine: string;
+  pdfLaborHoursLine: (hours: string) => string;
+  pdfHourlyRateLine: string;
+  pdfLaborTotalLine: string;
+  pdfMaterialsLine: string;
+  pdfPartsLine: string;
+  pdfOtherLine: string;
+  pdfServiceSubtotalLine: string;
   pdfDepositLine: string;
   pdfTotalLine: string;
+  pdfPaymentStatusPaid: string;
+  pdfPaymentStatusNoDue: string;
   pdfNotes: string;
   pdfPhotosBefore: string;
   pdfPhotosAfter: string;
@@ -95,7 +115,11 @@ type Block = {
   apiImagesOnly: string;
   apiImageTooLarge: string;
   apiGenerateFailed: string;
-  /** Balance card charge (separate from PDF/report) */
+  /** Cobro requerido pero sin sesión Stripe válida */
+  apiPaymentRequired: string;
+  /** Sesión de pago no verificable o no pagada */
+  apiPaymentNotVerified: string;
+  /** Balance card charge (legacy; botón integrado) */
   chargeButton: string;
   chargeHelp: string;
   noBalanceToCharge: string;
@@ -130,7 +154,7 @@ const EN: Block = {
   navMode: "Tablet",
   pageTitle: "On-site service report",
   pageSubtitle:
-    "Record the visit, calculate the balance due, generate the PDF, and email it. Card payment is a separate step — not on this screen.",
+    "Record the visit, add photos, and send the report. If there is a balance after the dispatch credit, card payment runs first, then the PDF is generated and emailed.",
   adminKeyLabel: "Technician key (if your account uses one)",
   adminKeyHelp: "Optional — must match ADMIN_SERVICIO_KEY on the server",
   establishmentLabel: "Home or business name",
@@ -157,7 +181,7 @@ const EN: Block = {
   notesHelp: "Optional details for the report",
   billingTitle: "Balance and breakdown",
   billingSectionHelp:
-    "Labor total is hours × the current hourly rate (see below). Enter materials, parts, and other charges as separate line items. Card payment is not collected on this screen.",
+    "Labor total is hours × the current hourly rate. Enter materials, parts, and other charges as separate lines. The main button will charge any balance (after dispatch credit) before sending the report, or send the report only if the balance is zero.",
   laborHoursLabel: "Labor hours",
   hourlyRateReadonlyLabel: "Hourly rate (USD)",
   laborSubtotalReadonlyLabel: "Labor total (USD)",
@@ -168,12 +192,20 @@ const EN: Block = {
   depositRow: "Dispatch fee credit ($195)",
   totalRow: "Amount due",
   totalRowHelp:
-    "After dispatch credit. Card payment is not collected on this screen.",
+    "After dispatch credit. If greater than zero, the main button opens card checkout before sending the report.",
   invoicePreviewTitle: "PDF header preview",
   invoicePreviewHint:
     "Same logo and header layout as the PDF you send (print or save from the browser).",
-  submitLoading: "Generating…",
-  submitIdle: "Generate report & send",
+  submitLoading: "Processing…",
+  submitIdle: "Generate and send report",
+  submitChargeAndSend: "Pay balance and send report",
+  stepCalculating: "Calculating…",
+  stepCharging: "Charging…",
+  stepUploading: "Uploading photos…",
+  stepGeneratingReport: "Generating report…",
+  stepFinishing: "Sending report…",
+  chargeStartError: "Could not start payment. Check connection and try again.",
+  postCheckoutRetry: "Retry sending report (payment was completed)",
   networkError: "Network or server error.",
   removePhotoAria: "Remove photo",
   depositLegal:
@@ -186,8 +218,17 @@ const EN: Block = {
   pdfChecklistTitle: "Internal inspection checklist",
   pdfBillingTitle: "Billing summary",
   pdfSubtotalLine: "Work subtotal:",
+  pdfLaborHoursLine: (h) => `Labor hours:  ${h}`,
+  pdfHourlyRateLine: "Hourly rate (USD):",
+  pdfLaborTotalLine: "Labor total (USD):",
+  pdfMaterialsLine: "Materials (USD):",
+  pdfPartsLine: "Parts (USD):",
+  pdfOtherLine: "Other charges (USD):",
+  pdfServiceSubtotalLine: "Service subtotal (before credit):",
   pdfDepositLine: "Dispatch fee credit ($195):",
-  pdfTotalLine: "Amount due:",
+  pdfTotalLine: "Balance / amount due:",
+  pdfPaymentStatusPaid: "Payment status: Paid by card (this report).",
+  pdfPaymentStatusNoDue: "Payment status: No balance due — no card charge required.",
   pdfNotes: "Notes",
   pdfPhotosBefore: "Photos — Before",
   pdfPhotosAfter: "Photos — After",
@@ -205,6 +246,8 @@ const EN: Block = {
   apiImagesOnly: "Only image files are allowed.",
   apiImageTooLarge: "Each image must be under 8 MB.",
   apiGenerateFailed: "Could not generate or send the report",
+  apiPaymentRequired: "This balance requires a successful card payment before the report is sent. Complete checkout first.",
+  apiPaymentNotVerified: "We could not verify the card payment. Try again or contact support.",
   chargeButton: "Charge balance by card",
   chargeHelp: "Only the remaining balance after the booking credit will be charged.",
   noBalanceToCharge: "There is no remaining balance to charge.",
@@ -236,7 +279,7 @@ const ES: Block = {
   navMode: "Tablet",
   pageTitle: "Reporte de servicio en sitio",
   pageSubtitle:
-    "Registre la visita, calcule el saldo pendiente, genere el PDF y envíelo por correo. El pago con tarjeta es aparte; no se cobra en esta pantalla.",
+    "Registre la visita, agregue fotos y envíe el informe. Si hay saldo tras el crédito dispatch, primero se cobra con tarjeta y luego se genera y envía el PDF.",
   adminKeyLabel: "Clave de técnico (si su cuenta la usa)",
   adminKeyHelp:
     "Opcional — debe coincidir con ADMIN_SERVICIO_KEY en el servidor",
@@ -264,7 +307,7 @@ const ES: Block = {
   notesHelp: "Detalle opcional para el informe",
   billingTitle: "Saldo y desglose",
   billingSectionHelp:
-    "El total de mano de obra es horas × la tarifa por hora vigente (vea abajo). Los materiales, partes y otros cargos se ingresan por separado. El cobro con tarjeta no se hace en esta pantalla.",
+    "El total de mano de obra es horas × la tarifa vigente. Ingrese materiales, partes y otros por separado. El botón principal cobrará el saldo (tras el crédito) antes de enviar el informe, o solo enviará si el saldo es cero.",
   laborHoursLabel: "Horas de mano de obra",
   hourlyRateReadonlyLabel: "Tarifa por hora (USD)",
   laborSubtotalReadonlyLabel: "Total mano de obra (USD)",
@@ -275,12 +318,20 @@ const ES: Block = {
   depositRow: "Crédito Dispatch fee ($195)",
   totalRow: "Total a pagar",
   totalRowHelp:
-    "Tras el crédito dispatch. El cobro con tarjeta no se realiza en esta pantalla.",
+    "Tras el crédito dispatch. Si es mayor que cero, el botón principal abre el pago con tarjeta antes de enviar el informe.",
   invoicePreviewTitle: "Vista previa del encabezado del PDF",
   invoicePreviewHint:
     "Mismo logo y encabezado que el PDF que envía (imprimir o guardar desde el navegador).",
-  submitLoading: "Generando…",
+  submitLoading: "Procesando…",
   submitIdle: "Generar informe y enviar",
+  submitChargeAndSend: "Cobrar y enviar reporte",
+  stepCalculating: "Calculando…",
+  stepCharging: "Cobrando…",
+  stepUploading: "Subiendo fotos…",
+  stepGeneratingReport: "Generando reporte…",
+  stepFinishing: "Enviando informe…",
+  chargeStartError: "No se pudo iniciar el pago. Revise la conexión e inténtelo de nuevo.",
+  postCheckoutRetry: "Reintentar envío del informe (el pago ya se completó)",
   networkError: "Error de red o del servidor.",
   removePhotoAria: "Quitar foto",
   depositLegal:
@@ -293,8 +344,17 @@ const ES: Block = {
   pdfChecklistTitle: "Lista de verificación interna",
   pdfBillingTitle: "Resumen de cobro",
   pdfSubtotalLine: "Subtotal del trabajo:",
+  pdfLaborHoursLine: (h) => `Horas de mano de obra:  ${h}`,
+  pdfHourlyRateLine: "Tarifa por hora (USD):",
+  pdfLaborTotalLine: "Total mano de obra (USD):",
+  pdfMaterialsLine: "Materiales (USD):",
+  pdfPartsLine: "Partes / repuestos (USD):",
+  pdfOtherLine: "Otros cargos (USD):",
+  pdfServiceSubtotalLine: "Subtotal de servicio (antes del crédito):",
   pdfDepositLine: "Crédito Dispatch fee ($195):",
-  pdfTotalLine: "Total a cobrar:",
+  pdfTotalLine: "Saldo / total a pagar:",
+  pdfPaymentStatusPaid: "Estado de pago: Pagado con tarjeta (este informe).",
+  pdfPaymentStatusNoDue: "Estado de pago: Sin saldo pendiente — no se requirió cobro con tarjeta.",
   pdfNotes: "Notas",
   pdfPhotosBefore: "Fotografías — Antes",
   pdfPhotosAfter: "Fotografías — Después",
@@ -312,6 +372,8 @@ const ES: Block = {
   apiImagesOnly: "Solo se permiten imágenes.",
   apiImageTooLarge: "Cada imagen debe ser menor a 8 MB.",
   apiGenerateFailed: "Error al generar o enviar",
+  apiPaymentRequired: "Este saldo requiere un pago con tarjeta antes de enviar el informe. Complete el checkout primero.",
+  apiPaymentNotVerified: "No se pudo verificar el pago con tarjeta. Intente de nuevo o contacte soporte.",
   chargeButton: "Cobrar saldo con tarjeta",
   chargeHelp: "Se cobrará solo el saldo pendiente después del crédito de reserva.",
   noBalanceToCharge: "No hay saldo pendiente por cobrar.",
@@ -342,12 +404,11 @@ export function servicioReportCopy(lang: ServicioLanguage): Block {
 export function buildServicioSuccessMessage(
   lang: ServicioLanguage,
   clientEmail: string,
-  amountDue: string,
 ): string {
   if (lang === "en") {
-    return `Done. PDF sent to ${clientEmail}. Balance due: $${amountDue} USD (after $195 dispatch credit). Card payment is a separate step.`;
+    return `Report sent. PDF emailed to ${clientEmail}.`;
   }
-  return `Listo. PDF enviado a ${clientEmail}. Saldo pendiente: $${amountDue} USD (tras crédito dispatch $195). El cobro con tarjeta es un paso aparte.`;
+  return `Informe enviado. El PDF se envió a ${clientEmail}.`;
 }
 
 function statusWord(

@@ -15,14 +15,28 @@ export type ServicioReportPayload = {
   checklistHandSink: ChecklistStatus;
   checklistGreaseTrap: ChecklistStatus;
   notes: string;
+  /** Tarifa por hora (USD) mostrada en PDF. */
+  hourlyRateUsd: number;
+  /** Horas de mano de obra. */
+  laborHours: number;
+  /** hours × tarifa. */
+  laborSubtotal: number;
+  materialsSubtotal: number;
+  partsSubtotal: number;
+  otherChargesSubtotal: number;
   /**
-   * labor (hours × HOURLY_PLUMBING_RATE_USD) + materials + parts + other
-   * (before $195 dispatch credit)
+   * Mismo “subtotal” de facturación: labor + materials + parts + other
+   * (alias de `subtotal` en lógica de negocio).
    */
   invoiceSubtotal: number;
+  /** Crédito dispatch; misma lógica que en computeServicioBilling. */
   depositCredit: number;
-  /** invoiceSubtotal - depositCredit, floored at 0 */
   amountDue: number;
+  /**
+   * Si hubo pago con tarjeta requerido, el PDF indica "Pagado" con la sesión;
+   * si el saldo era 0, "Sin saldo pendiente" / "No charge".
+   */
+  paymentStatus: "card_paid" | "no_balance_due";
   photosBefore: Buffer[];
   photosAfter: Buffer[];
 };

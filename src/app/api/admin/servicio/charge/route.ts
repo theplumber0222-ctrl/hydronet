@@ -6,8 +6,8 @@ import {
   servicioReportCopy,
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
+import { computeServicioBilling } from "@/lib/servicio-billing-math";
 import {
-  CONNECT_DEPOSIT_USD,
   getStripe,
   HOURLY_PLUMBING_RATE_USD,
   isStripeSecretKeyFailure,
@@ -36,10 +36,6 @@ const bodySchema = z.object({
   partsSubtotal: money,
   otherChargesSubtotal: money,
 });
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 export async function POST(req: Request) {
   const adminKey = process.env.ADMIN_SERVICIO_KEY;
@@ -76,19 +72,14 @@ export async function POST(req: Request) {
     : "es";
   const c = servicioReportCopy(language);
 
-  const laborSubtotal = round2(
-    data.laborHours * HOURLY_PLUMBING_RATE_USD,
-  );
-  const invoiceSubtotal = round2(
-    laborSubtotal +
-      data.materialsSubtotal +
-      data.partsSubtotal +
-      data.otherChargesSubtotal,
-  );
-  const amountDue = Math.max(
-    0,
-    round2(invoiceSubtotal - CONNECT_DEPOSIT_USD),
-  );
+  const snap = computeServicioBilling({
+    laborHours: data.laborHours,
+    materialsSubtotal: data.materialsSubtotal,
+    partsSubtotal: data.partsSubtotal,
+    otherChargesSubtotal: data.otherChargesSubtotal,
+  });
+  const { laborTotal: laborSubtotal, subtotal: invoiceSubtotal, amountDue } =
+    snap;
 
   if (amountDue <= 0) {
     return NextResponse.json({ error: c.apiChargeNoBalance }, { status: 400 });

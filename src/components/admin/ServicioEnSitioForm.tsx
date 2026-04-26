@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { OFFICIAL_LOGO_URL } from "@/lib/official-logo";
 import {
@@ -16,7 +16,7 @@ import {
   type ServicioLanguage,
 } from "@/lib/servicio-report-copy";
 import { compressServicioPhotoToJpeg } from "@/lib/servicio-photo-compress";
-import { CONNECT_DEPOSIT_USD, HOURLY_PLUMBING_RATE_USD } from "@/lib/stripe";
+import { computeServicioBilling } from "@/lib/servicio-billing-math";
 
 type UploadedPhotoRef = {
   url: string;
@@ -177,9 +177,17 @@ function checklistTitle(
 }
 
 const STORAGE_ADMIN = "hydronet_servicio_admin_key";
+/** `reportId` fijado antes de redirigir a Checkout (coincide con subida a Blob). */
+const STORAGE_CHECKOUT = "hydronet_servicio_checkout";
+/**
+ * Tras volver de Stripe: reintento del envío o recarga de página (la query se limpia).
+ */
+const STORAGE_POST_PAY = "hydronet_servicio_post_checkout";
 /** Mínimo USD en Stripe para pago con tarjeta (alineado con API charge). */
 const MIN_CARD_CHARGE_USD = 0.5;
 const DRAFT_SAVE_MS = 450;
+/** Evita doble auto-envío (React Strict en dev) al volver de Stripe. */
+let postCheckoutAutorunInFlight = false;
 
 /**
  * FileList → File[] estable para React.
@@ -213,10 +221,6 @@ function parseMoneyField(s: string): number {
   if (t === "") return 0;
   const n = parseFloat(t);
   if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.round(n * 100) / 100;
-}
-
-function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
@@ -259,11 +263,12 @@ export function ServicioEnSitioForm() {
   const [loading, setLoading] = useState(false);
   /** Paso visible durante el submit (subida Blob / envío del reporte). */
   const [submitStep, setSubmitStep] = useState<string | null>(null);
-  const [chargeLoading, setChargeLoading] = useState(false);
   const [chargeError, setChargeError] = useState<string | null>(null);
-  const [paymentReturn, setPaymentReturn] = useState<"success" | "cancelled" | null>(
-    null,
-  );
+  const [postCheckoutReady, setPostCheckoutReady] = useState<{
+    reportId: string;
+    sessionId: string;
+  } | null>(null);
+  const [postCheckoutFailed, setPostCheckoutFailed] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const skipHydrateBeforeRef = useRef(false);
   const skipHydrateAfterRef = useRef(false);
@@ -273,6 +278,15 @@ export function ServicioEnSitioForm() {
    * que no rehidrate fotos de un reporte ya cerrado.
    */
   const submittedRef = useRef(false);
+  const runReportPipelineRef = useRef(
+    null as
+      | ((
+          reportId: string,
+          stripeSessionId: string | null,
+        ) => Promise<boolean>)
+      | null,
+  );
+  const postCheckoutAutorunKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -357,10 +371,55 @@ export function ServicioEnSitioForm() {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams(window.location.search);
     const pay = p.get("payment");
-    if (pay === "success") {
-      setPaymentReturn("success");
+    const sessionId = p.get("session_id");
+    if (pay === "success" && sessionId) {
+      let reportId: string | undefined;
+      try {
+        const raw = sessionStorage.getItem(STORAGE_CHECKOUT);
+        if (raw) {
+          const o = JSON.parse(raw) as { v?: number; reportId?: string };
+          if (o?.v === 1 && o.reportId) reportId = o.reportId;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (reportId) {
+        const payload = { v: 1 as const, reportId, sessionId };
+        setPostCheckoutReady({ reportId, sessionId });
+        try {
+          sessionStorage.setItem(STORAGE_POST_PAY, JSON.stringify(payload));
+        } catch {
+          /* ignore */
+        }
+      } else {
+        let lang2: ServicioLanguage = "es";
+        try {
+          const t = loadDraftFromLocalStorage();
+          if (t?.v === 1 && (t.serviceLanguage === "en" || t.serviceLanguage === "es")) {
+            lang2 = t.serviceLanguage;
+          }
+        } catch {
+          /* ignore */
+        }
+        setError(servicioReportCopy(lang2).apiPaymentRequired);
+      }
     } else if (pay === "cancelled") {
-      setPaymentReturn("cancelled");
+      let lang: ServicioLanguage = "es";
+      try {
+        const t = loadDraftFromLocalStorage();
+        if (t?.v === 1 && (t.serviceLanguage === "en" || t.serviceLanguage === "es")) {
+          lang = t.serviceLanguage;
+        }
+      } catch {
+        /* ignore */
+      }
+      setChargeError(servicioReportCopy(lang).paymentCancelledReturn);
+      try {
+        sessionStorage.removeItem(STORAGE_CHECKOUT);
+        sessionStorage.removeItem(STORAGE_POST_PAY);
+      } catch {
+        /* ignore */
+      }
     }
     if (pay === "success" || pay === "cancelled") {
       window.history.replaceState(
@@ -368,6 +427,25 @@ export function ServicioEnSitioForm() {
         "",
         window.location.pathname + window.location.hash,
       );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("payment")) return;
+    try {
+      const raw = sessionStorage.getItem(STORAGE_POST_PAY);
+      if (!raw) return;
+      const o = JSON.parse(raw) as {
+        v?: number;
+        reportId?: string;
+        sessionId?: string;
+      };
+      if (o?.v === 1 && o.reportId && o.sessionId) {
+        setPostCheckoutReady({ reportId: o.reportId, sessionId: o.sessionId });
+      }
+    } catch {
+      /* ignore */
     }
   }, []);
 
@@ -420,17 +498,26 @@ export function ServicioEnSitioForm() {
   ]);
 
   const laborH = parseNonNegativeHours(laborHours);
-  const laborSubtotal = round2(laborH * HOURLY_PLUMBING_RATE_USD);
   const materialsN = parseMoneyField(materialsSubtotal);
   const partsN = parseMoneyField(partsSubtotal);
   const otherN = parseMoneyField(otherChargesSubtotal);
-  const invoiceSubtotal = round2(
-    laborSubtotal + materialsN + partsN + otherN,
+  const billingSnap = useMemo(
+    () =>
+      computeServicioBilling({
+        laborHours: laborH,
+        materialsSubtotal: materialsN,
+        partsSubtotal: partsN,
+        otherChargesSubtotal: otherN,
+      }),
+    [laborH, materialsN, partsN, otherN],
   );
-  const deposit = CONNECT_DEPOSIT_USD;
-  const amountDue = Math.max(0, round2(invoiceSubtotal - deposit));
-  const canChargeByCard =
-    amountDue >= MIN_CARD_CHARGE_USD;
+  const {
+    laborTotal: laborSubtotal,
+    subtotal: invoiceSubtotal,
+    dispatchCredit: deposit,
+    amountDue,
+  } = billingSnap;
+  const { hourlyRateUsd } = billingSnap;
 
   const persistAdminKey = useCallback(() => {
     if (adminKey.trim()) {
@@ -484,6 +571,8 @@ export function ServicioEnSitioForm() {
     }
     try {
       sessionStorage.removeItem(STORAGE_ADMIN);
+      sessionStorage.removeItem(STORAGE_CHECKOUT);
+      sessionStorage.removeItem(STORAGE_POST_PAY);
     } catch {
       /* ignore */
     }
@@ -510,9 +599,184 @@ export function ServicioEnSitioForm() {
   const handleClearDraft = useCallback(async () => {
     await resetFormForNewReport();
     setStatus(null);
-    setPaymentReturn(null);
     setChargeError(null);
+    setPostCheckoutReady(null);
+    setPostCheckoutFailed(false);
   }, [resetFormForNewReport]);
+
+  const runReportPipeline = useCallback(
+    async (
+      reportId: string,
+      stripeSessionId: string | null,
+    ): Promise<boolean> => {
+      const copy = servicioReportCopy(serviceLanguage);
+      setError(null);
+      setStatus(null);
+      setLoading(true);
+      setSubmitStep(copy.stepCalculating);
+      try {
+        let key = adminKey.trim();
+        if (!key) {
+          try {
+            key = sessionStorage.getItem(STORAGE_ADMIN) ?? "";
+          } catch {
+            key = "";
+          }
+        }
+
+        let photosBeforeRefs: UploadedPhotoRef[] = [];
+        let photosAfterRefs: UploadedPhotoRef[] = [];
+        try {
+          setSubmitStep(copy.stepUploading);
+          photosBeforeRefs = await uploadPhotoSideDirect(
+            "before",
+            photosBefore,
+            reportId,
+            key,
+            (p) =>
+              setSubmitStep(servicioPhotoProgressLabel(serviceLanguage, p)),
+          );
+          setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "after"));
+          photosAfterRefs = await uploadPhotoSideDirect(
+            "after",
+            photosAfter,
+            reportId,
+            key,
+            (p) =>
+              setSubmitStep(servicioPhotoProgressLabel(serviceLanguage, p)),
+          );
+        } catch (uploadErr) {
+          console.error("[servicio] photo upload failed", uploadErr);
+          setError(
+            uploadErr instanceof Error ? uploadErr.message : copy.networkError,
+          );
+          return false;
+        }
+
+        setSubmitStep(copy.stepGeneratingReport);
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (key) headers["x-hydronet-admin-key"] = key;
+        const body: Record<string, unknown> = {
+          reportId,
+          serviceLanguage,
+          restaurantName,
+          bookingReference: bookingReference.trim(),
+          clientEmail,
+          technicianName,
+          serviceDate,
+          checklistAirGap: checklist.airGap,
+          checklistHandSink: checklist.handSink,
+          checklistGreaseTrap: checklist.greaseTrap,
+          notes,
+          laborHours: laborH,
+          materialsSubtotal: materialsN,
+          partsSubtotal: partsN,
+          otherChargesSubtotal: otherN,
+          photosBefore: photosBeforeRefs,
+          photosAfter: photosAfterRefs,
+        };
+        if (stripeSessionId) {
+          body.stripeCheckoutSessionId = stripeSessionId;
+        }
+        let res: Response;
+        try {
+          res = await fetch("/api/admin/servicio/report", {
+            method: "POST",
+            headers,
+            body: JSON.stringify(body),
+          });
+        } catch (err) {
+          console.error("[servicio] report post failed", err);
+          setError(err instanceof Error ? err.message : copy.networkError);
+          return false;
+        }
+        setSubmitStep(copy.stepFinishing);
+        let data: { error?: unknown };
+        try {
+          data = (await res.json()) as { error?: unknown };
+        } catch {
+          setError(copy.networkError);
+          return false;
+        }
+        if (!res.ok) {
+          setError(
+            typeof data.error === "string"
+              ? data.error
+              : JSON.stringify(data.error ?? "Error"),
+          );
+          return false;
+        }
+        setStatus(
+          buildServicioSuccessMessage(serviceLanguage, clientEmail),
+        );
+        try {
+          sessionStorage.removeItem(STORAGE_CHECKOUT);
+          sessionStorage.removeItem(STORAGE_POST_PAY);
+        } catch {
+          /* ignore */
+        }
+        setPostCheckoutReady(null);
+        setPostCheckoutFailed(false);
+        await resetFormForNewReport();
+        return true;
+      } finally {
+        setSubmitStep(null);
+        setLoading(false);
+      }
+    },
+    [
+      adminKey,
+      restaurantName,
+      bookingReference,
+      clientEmail,
+      technicianName,
+      serviceDate,
+      checklist,
+      notes,
+      laborH,
+      materialsN,
+      partsN,
+      otherN,
+      photosBefore,
+      photosAfter,
+      serviceLanguage,
+      resetFormForNewReport,
+    ],
+  );
+
+  runReportPipelineRef.current = runReportPipeline;
+
+  useEffect(() => {
+    if (!postCheckoutReady) {
+      postCheckoutAutorunKeyRef.current = null;
+    }
+  }, [postCheckoutReady]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    if (!postCheckoutReady) return;
+    const k = `${postCheckoutReady.reportId}:${postCheckoutReady.sessionId}`;
+    if (postCheckoutAutorunKeyRef.current === k) return;
+    postCheckoutAutorunKeyRef.current = k;
+    if (postCheckoutAutorunInFlight) return;
+    postCheckoutAutorunInFlight = true;
+    setPostCheckoutFailed(false);
+    void (async () => {
+      try {
+        const fn = runReportPipelineRef.current;
+        if (!fn) return;
+        const ok = await fn(
+          postCheckoutReady.reportId,
+          postCheckoutReady.sessionId,
+        );
+        if (!ok) {
+          setPostCheckoutFailed(true);
+        }
+      } finally {
+        postCheckoutAutorunInFlight = false;
+      }
+    })();
+  }, [draftHydrated, postCheckoutReady]);
 
   const onBeforeFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.currentTarget;
@@ -566,116 +830,14 @@ export function ServicioEnSitioForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (postCheckoutReady) {
+      return;
+    }
     setError(null);
     setStatus(null);
-    persistAdminKey();
-
-    let key = adminKey.trim();
-    if (!key) {
-      try {
-        key = sessionStorage.getItem(STORAGE_ADMIN) ?? "";
-      } catch {
-        key = "";
-      }
-    }
-
-    setLoading(true);
-    setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "before"));
-    try {
-      // 1) Sube fotos directo a Vercel Blob desde el navegador para evitar
-      //    FUNCTION_PAYLOAD_TOO_LARGE en /api/admin/servicio/report.
-      const reportId = generateReportId();
-      let photosBeforeRefs: UploadedPhotoRef[] = [];
-      let photosAfterRefs: UploadedPhotoRef[] = [];
-      try {
-        photosBeforeRefs = await uploadPhotoSideDirect(
-          "before",
-          photosBefore,
-          reportId,
-          key,
-          (p) =>
-            setSubmitStep(
-              servicioPhotoProgressLabel(serviceLanguage, p),
-            ),
-        );
-        setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "after"));
-        photosAfterRefs = await uploadPhotoSideDirect(
-          "after",
-          photosAfter,
-          reportId,
-          key,
-          (p) =>
-            setSubmitStep(
-              servicioPhotoProgressLabel(serviceLanguage, p),
-            ),
-        );
-      } catch (uploadErr) {
-        console.error("[servicio] photo upload failed", uploadErr);
-        setError(
-          uploadErr instanceof Error ? uploadErr.message : c.networkError,
-        );
-        return;
-      }
-
-      // 2) Body ligero (solo metadata + URLs Blob) al endpoint del reporte.
-      setSubmitStep(servicioSubmitStepLabel(serviceLanguage, "report"));
-      const headers: HeadersInit = { "Content-Type": "application/json" };
-      if (key) headers["x-hydronet-admin-key"] = key;
-
-      const res = await fetch("/api/admin/servicio/report", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          reportId,
-          serviceLanguage,
-          restaurantName,
-          bookingReference: bookingReference.trim(),
-          clientEmail,
-          technicianName,
-          serviceDate,
-          checklistAirGap: checklist.airGap,
-          checklistHandSink: checklist.handSink,
-          checklistGreaseTrap: checklist.greaseTrap,
-          notes,
-          laborHours: laborH,
-          materialsSubtotal: materialsN,
-          partsSubtotal: partsN,
-          otherChargesSubtotal: otherN,
-          photosBefore: photosBeforeRefs,
-          photosAfter: photosAfterRefs,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(
-          typeof data.error === "string"
-            ? data.error
-            : JSON.stringify(data.error ?? "Error"),
-        );
-        return;
-      }
-      const due =
-        typeof data.amountDue === "number"
-          ? data.amountDue.toFixed(2)
-          : amountDue.toFixed(2);
-      setStatus(
-        buildServicioSuccessMessage(serviceLanguage, clientEmail, due),
-      );
-      await resetFormForNewReport();
-    } catch (err) {
-      console.error("[servicio] submit failed", err);
-      setError(err instanceof Error ? err.message : c.networkError);
-    } finally {
-      setSubmitStep(null);
-      setLoading(false);
-    }
-  }
-
-  async function onChargeByCard() {
     setChargeError(null);
-    setPaymentReturn(null);
-    await persistFullDraft(buildDraft(), photosBefore, photosAfter);
     persistAdminKey();
+
     let key = adminKey.trim();
     if (!key) {
       try {
@@ -684,52 +846,99 @@ export function ServicioEnSitioForm() {
         key = "";
       }
     }
-    if (!canChargeByCard) {
-      if (amountDue <= 0) {
-        setChargeError(c.noBalanceToCharge);
+
+    if (amountDue > 0) {
+      if (amountDue < MIN_CARD_CHARGE_USD) {
+        setError(c.chargeMinStripe);
         return;
       }
-      setChargeError(c.chargeMinStripe);
+      setLoading(true);
+      setSubmitStep(c.stepCalculating);
+      let redirecting = false;
+      try {
+        await persistFullDraft(buildDraft(), photosBefore, photosAfter);
+        const reportId = generateReportId();
+        try {
+          sessionStorage.setItem(
+            STORAGE_CHECKOUT,
+            JSON.stringify({ v: 1, reportId, t: Date.now() }),
+          );
+        } catch {
+          /* ignore */
+        }
+        setSubmitStep(c.stepCharging);
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (key) headers["x-hydronet-admin-key"] = key;
+        const res = await fetch("/api/admin/servicio/charge", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            serviceLanguage,
+            bookingReference: bookingReference.trim(),
+            clientEmail: clientEmail.trim(),
+            houseOrBusinessName: restaurantName.trim(),
+            technician: technicianName.trim(),
+            serviceDate: serviceDate.trim(),
+            laborHours: laborH,
+            materialsSubtotal: materialsN,
+            partsSubtotal: partsN,
+            otherChargesSubtotal: otherN,
+          }),
+        });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok) {
+          setError(
+            typeof data.error === "string" ? data.error : c.chargeError,
+          );
+          try {
+            sessionStorage.removeItem(STORAGE_CHECKOUT);
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
+        if (data.url) {
+          redirecting = true;
+          window.location.assign(data.url);
+          return;
+        }
+        setError(c.chargeStartError);
+        try {
+          sessionStorage.removeItem(STORAGE_CHECKOUT);
+        } catch {
+          /* ignore */
+        }
+      } catch (err) {
+        console.error("[servicio] charge failed", err);
+        setError(err instanceof Error ? err.message : c.chargeStartError);
+        try {
+          sessionStorage.removeItem(STORAGE_CHECKOUT);
+        } catch {
+          /* ignore */
+        }
+      } finally {
+        if (!redirecting) {
+          setSubmitStep(null);
+          setLoading(false);
+        }
+      }
       return;
     }
 
-    setChargeLoading(true);
-    try {
-      const headers: HeadersInit = { "Content-Type": "application/json" };
-      if (key) headers["x-hydronet-admin-key"] = key;
+    const reportId = generateReportId();
+    await runReportPipeline(reportId, null);
+  }
 
-      const res = await fetch("/api/admin/servicio/charge", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          serviceLanguage,
-          bookingReference: bookingReference.trim(),
-          clientEmail: clientEmail.trim(),
-          houseOrBusinessName: restaurantName.trim(),
-          technician: technicianName.trim(),
-          serviceDate: serviceDate.trim(),
-          laborHours: laborH,
-          materialsSubtotal: materialsN,
-          partsSubtotal: partsN,
-          otherChargesSubtotal: otherN,
-        }),
-      });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok) {
-        setChargeError(
-          typeof data.error === "string" ? data.error : c.chargeError,
-        );
-        return;
-      }
-      if (data.url) {
-        window.location.assign(data.url);
-        return;
-      }
-      setChargeError(c.chargeError);
-    } catch {
-      setChargeError(c.chargeError);
-    } finally {
-      setChargeLoading(false);
+  async function onRetryPostCheckoutReport() {
+    if (!postCheckoutReady) return;
+    setPostCheckoutFailed(false);
+    setError(null);
+    const ok = await runReportPipeline(
+      postCheckoutReady.reportId,
+      postCheckoutReady.sessionId,
+    );
+    if (!ok) {
+      setPostCheckoutFailed(true);
     }
   }
 
@@ -738,6 +947,9 @@ export function ServicioEnSitioForm() {
     { v: "fail" as const, label: c.fail },
     { v: "na" as const, label: c.na },
   ];
+
+  const primaryLabel =
+    amountDue > 0 ? c.submitChargeAndSend : c.submitIdle;
 
   return (
     <form
@@ -1037,7 +1249,7 @@ export function ServicioEnSitioForm() {
           <div>
             <label className="label">{c.hourlyRateReadonlyLabel}</label>
             <p className="input-field font-mono text-slate-200">
-              ${HOURLY_PLUMBING_RATE_USD.toFixed(2)}
+              ${hourlyRateUsd.toFixed(2)}
             </p>
           </div>
           <div className="sm:col-span-2">
@@ -1104,18 +1316,8 @@ export function ServicioEnSitioForm() {
 
         <div className="mt-5 border-t border-orange-500/20 pt-5">
           <p className="text-sm text-slate-500">{c.chargeHelp}</p>
-          <button
-            type="button"
-            onClick={onChargeByCard}
-            disabled={chargeLoading || !canChargeByCard}
-            className="mt-3 w-full rounded-xl border-2 border-emerald-500/60 bg-emerald-950/40 py-3 text-lg font-semibold text-emerald-200 transition hover:bg-emerald-950/60 disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {chargeLoading ? c.chargeLoading : c.chargeButton}
-          </button>
-          {!canChargeByCard && (
-            <p className="mt-2 text-sm text-slate-500">
-              {amountDue <= 0 ? c.noBalanceToCharge : c.chargeMinStripe}
-            </p>
+          {amountDue > 0 && amountDue < MIN_CARD_CHARGE_USD && (
+            <p className="mt-2 text-sm text-amber-200/90">{c.chargeMinStripe}</p>
           )}
           {chargeError && (
             <p className="mt-2 text-sm text-red-300">{chargeError}</p>
@@ -1123,15 +1325,18 @@ export function ServicioEnSitioForm() {
         </div>
       </section>
 
-      {paymentReturn === "success" && (
-        <p className="rounded-xl bg-sky-950/50 px-4 py-3 text-sky-200">
-          {c.paymentSuccessReturn}
-        </p>
-      )}
-      {paymentReturn === "cancelled" && (
-        <p className="rounded-xl bg-amber-950/50 px-4 py-3 text-amber-100">
-          {c.paymentCancelledReturn}
-        </p>
+      {postCheckoutReady && postCheckoutFailed && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3">
+          <p className="text-sm text-amber-100">{c.apiGenerateFailed}</p>
+          <button
+            type="button"
+            onClick={() => void onRetryPostCheckoutReport()}
+            disabled={loading}
+            className="mt-3 w-full rounded-xl border border-amber-400/50 bg-amber-900/40 py-3 text-sm font-semibold text-amber-50 disabled:opacity-50"
+          >
+            {c.postCheckoutRetry}
+          </button>
+        </div>
       )}
 
       {error && (
@@ -1153,10 +1358,12 @@ export function ServicioEnSitioForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || postCheckoutReady != null}
         className="fixed bottom-0 left-0 right-0 z-10 mx-auto max-w-3xl rounded-t-2xl bg-[#F97316] py-5 text-center text-xl font-bold text-white shadow-[0_-8px_32px_rgba(0,0,0,0.4)] disabled:opacity-60 sm:relative sm:rounded-2xl sm:py-6 sm:shadow-lg"
       >
-        {loading ? c.submitLoading : c.submitIdle}
+        {loading
+          ? (submitStep ?? c.submitLoading)
+          : primaryLabel}
       </button>
     </form>
   );
