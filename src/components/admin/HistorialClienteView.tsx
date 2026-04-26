@@ -49,6 +49,8 @@ type StoredPhotoRefH = {
   pathname: string;
   contentType: string;
   size: number;
+  /** Ruta API firmada (Blob privado); preferir sobre `url` en UI. */
+  viewUrl?: string;
 };
 
 type ServicioReportH = {
@@ -426,11 +428,13 @@ export function HistorialClienteView() {
                     </p>
                     <ChecklistRow t={t} report={s} />
                     <PhotoStrip
+                      t={t}
                       title={t("adminHistorial.photosBefore")}
                       photos={s.photosBefore}
                       noPhotosLabel={t("adminHistorial.noPhotos")}
                     />
                     <PhotoStrip
+                      t={t}
                       title={t("adminHistorial.photosAfter")}
                       photos={s.photosAfter}
                       noPhotosLabel={t("adminHistorial.noPhotos")}
@@ -507,14 +511,39 @@ function ChecklistRow({
 }
 
 function PhotoStrip({
+  t,
   title,
   photos,
   noPhotosLabel,
 }: {
+  t: (path: string) => string;
   title: string;
   photos: StoredPhotoRefH[];
   noPhotosLabel: string;
 }) {
+  const [viewer, setViewer] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!viewer) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setViewer(null);
+      }
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [viewer]);
+
   return (
     <div className="mt-2">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -525,25 +554,101 @@ function PhotoStrip({
       ) : (
         <div className="mt-1 flex flex-wrap gap-2">
           {photos.map((p) => (
-            <a
-              key={p.url}
-              href={p.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block overflow-hidden rounded-md border border-slate-600 hover:border-sky-400"
-              title={p.pathname}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={p.url}
-                alt={title}
-                className="h-16 w-16 object-cover"
-                loading="lazy"
-              />
-            </a>
+            <HistorialPhotoThumb
+              key={p.pathname}
+              p={p}
+              title={title}
+              t={t}
+              onOpen={(src) => setViewer({ src, alt: title })}
+            />
           ))}
         </div>
       )}
+
+      {viewer ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          onClick={() => setViewer(null)}
+        >
+          <div
+            className="flex max-h-full w-full max-w-4xl flex-col items-stretch"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex w-full shrink-0 items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    viewer.src,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+                className="rounded-md border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700"
+              >
+                {t("adminHistorial.openPhotoInNewTab")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewer(null)}
+                className="rounded-md border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700"
+              >
+                {t("adminHistorial.closePhotoViewer")}
+              </button>
+            </div>
+            <div className="min-h-0 flex flex-1 items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={viewer.src}
+                alt={viewer.alt}
+                className="max-h-[min(80vh,900px)] max-w-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function HistorialPhotoThumb({
+  p,
+  title,
+  t,
+  onOpen,
+}: {
+  p: StoredPhotoRefH;
+  title: string;
+  t: (path: string) => string;
+  onOpen: (src: string) => void;
+}) {
+  const [broken, setBroken] = useState(false);
+  const src = p.viewUrl ?? p.url;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(src)}
+      className="block h-16 w-16 cursor-zoom-in overflow-hidden rounded-md border border-slate-600 bg-slate-800/50 hover:border-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-400"
+      title={p.pathname}
+    >
+      {broken ? (
+        <span className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] leading-tight text-amber-200/90">
+          {t("adminHistorial.photoThumbError")}
+        </span>
+      ) : (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src}
+          alt=""
+          className="h-16 w-16 object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => setBroken(true)}
+        />
+      )}
+    </button>
   );
 }

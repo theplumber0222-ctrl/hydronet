@@ -495,6 +495,9 @@ const en = {
     downloadPdf: "Download PDF",
     bookingRefShort: "Ref",
     errEmail: "Enter a valid email address.",
+    closePhotoViewer: "Close",
+    openPhotoInNewTab: "Open in new tab",
+    photoThumbError: "Image unavailable",
   },
   success: {
     title: "Payment received",

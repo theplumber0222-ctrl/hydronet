@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { authorizeTabletRequest } from "@/lib/tablet-worker-auth";
 import { normalizeEmail } from "@/lib/normalize-email";
 import { coercePhotoRefs } from "@/lib/servicio-report-storage";
+import { withPhotoViewPath } from "@/lib/servicio-photo-view-token";
 
 export const runtime = "nodejs";
 
@@ -112,8 +113,8 @@ export async function GET(req: Request) {
     invoiceSubtotal: r.invoiceSubtotal,
     depositCredit: r.depositCredit,
     pdfUrl: r.pdfUrl,
-    photosBefore: coercePhotoRefs(r.photosBefore),
-    photosAfter: coercePhotoRefs(r.photosAfter),
+    photosBefore: coercePhotoRefs(r.photosBefore).map(withPhotoViewPath),
+    photosAfter: coercePhotoRefs(r.photosAfter).map(withPhotoViewPath),
     createdAt: r.createdAt.toISOString(),
   }));
 

@@ -500,6 +500,9 @@ const es = {
     downloadPdf: "Descargar PDF",
     bookingRefShort: "Ref",
     errEmail: "Indique un correo válido.",
+    closePhotoViewer: "Cerrar",
+    openPhotoInNewTab: "Abrir en pestaña nueva",
+    photoThumbError: "Imagen no disponible",
   },
   success: {
     title: "Pago recibido",
