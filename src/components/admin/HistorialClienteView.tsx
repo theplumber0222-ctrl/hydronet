@@ -557,7 +557,6 @@ function PhotoStrip({
             <HistorialPhotoThumb
               key={p.pathname}
               p={p}
-              title={title}
               t={t}
               onOpen={(src) => setViewer({ src, alt: title })}
             />
@@ -616,12 +615,10 @@ function PhotoStrip({
 
 function HistorialPhotoThumb({
   p,
-  title,
   t,
   onOpen,
 }: {
   p: StoredPhotoRefH;
-  title: string;
   t: (path: string) => string;
   onOpen: (src: string) => void;
 }) {
