@@ -20,7 +20,7 @@ function addChecklistRow(
     .fillColor("#0f172a")
     .font("Helvetica")
     .text(`  ${statusWord(lang, st)}`, { indent: 8 });
-  doc.moveDown(0.6);
+  doc.moveDown(0.42);
 }
 
 function addImagesSection(
@@ -34,9 +34,15 @@ function addImagesSection(
   const left = doc.page.margins.left;
   const innerW =
     doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  doc.addPage();
+  /**
+   * No `addPage()` aquí: antes se forzaba una página nueva antes de cada bloque de fotos,
+   * dejando a menudo una página intermedia casi vacía tras cobro/notas. Las fotos continúan
+   * el flujo; PDFKit pagina solo cuando el contenido no cabe.
+   */
+  doc.moveDown(0.85);
+  doc.x = left;
   doc.fontSize(14).fillColor("#0ea5e9").font("Helvetica-Bold").text(title);
-  doc.moveDown(0.8);
+  doc.moveDown(0.55);
   /** Sin esto, PDFKit deja doc.x al final del título y doc.image() ancla mal el bloque fit+center. */
   doc.x = left;
 
@@ -85,9 +91,9 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     if (logoBuf) {
       try {
         const fitW = Math.min(672, pageInnerW);
-        const fitH = 176;
+        const fitH = 152;
         doc.image(logoBuf, margin, margin, { fit: [fitW, fitH] });
-        yAfterHeader = margin + fitH + 24;
+        yAfterHeader = margin + fitH + 14;
       } catch {
         yAfterHeader = margin;
       }
@@ -98,52 +104,53 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
 
     doc.fontSize(20).fillColor("#0f172a").font("Helvetica-Bold");
     doc.text(c.pdfTitle, { align: "center" });
-    doc.moveDown(1);
+    doc.x = margin;
+    doc.moveDown(0.75);
 
     doc.fontSize(10).fillColor("#334155").font("Helvetica");
     doc.text(`${generated} (TN)`);
-    doc.moveDown(0.8);
+    doc.moveDown(0.55);
 
     doc.font("Helvetica-Bold").fontSize(11).fillColor("#0f172a");
     doc.text(c.pdfEstablishment);
     doc.font("Helvetica").text(data.restaurantName);
-    doc.moveDown(0.5);
+    doc.moveDown(0.35);
 
     if (data.bookingReference?.trim()) {
       doc.font("Helvetica-Bold").text(c.pdfBookingRef);
       doc.font("Helvetica").text(data.bookingReference.trim());
-      doc.moveDown(0.5);
+      doc.moveDown(0.35);
     }
 
     doc.font("Helvetica-Bold").text(c.pdfTechnician);
     doc.font("Helvetica").text(data.technicianName);
-    doc.moveDown(0.5);
+    doc.moveDown(0.35);
 
     doc.font("Helvetica-Bold").text(c.pdfServiceDate);
     doc.font("Helvetica").text(data.serviceDate);
-    doc.moveDown(0.8);
+    doc.moveDown(0.55);
 
     doc
       .font("Helvetica-Bold")
       .fontSize(13)
       .fillColor("#0ea5e9")
       .text(c.pdfChecklistTitle);
-    doc.moveDown(0.5);
+    doc.moveDown(0.35);
 
     addChecklistRow(doc, c.checklistAirGap, data.checklistAirGap, lang);
     addChecklistRow(doc, c.checklistHandSink, data.checklistHandSink, lang);
     addChecklistRow(doc, c.checklistGreaseTrap, data.checklistGreaseTrap, lang);
 
-    doc.moveDown(0.5);
+    doc.moveDown(0.35);
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#0ea5e9");
     doc.text(c.pdfBillingTitle);
-    doc.moveDown(0.3);
+    doc.moveDown(0.22);
     doc.font("Helvetica").fontSize(10).fillColor("#0f172a");
     // 1) Dispatch fee (monto de referencia = depositCredit, mismo crédito aplicado en §7; no se suma al subtotal de trabajo)
     doc.text(
       `${c.pdfDispatchFeeLine}  $${data.depositCredit.toFixed(2)} USD`,
     );
-    doc.moveDown(0.4);
+    doc.moveDown(0.28);
     // 2) Mano de obra: horas, tarifa, total (valores: laborHours, hourlyRateUsd, laborSubtotal)
     doc
       .font("Helvetica-Bold")
@@ -167,7 +174,7 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.text(
       `${c.pdfOtherLine}  $${data.otherChargesSubtotal.toFixed(2)} USD`,
     );
-    doc.moveDown(0.25);
+    doc.moveDown(0.18);
     // 6) Subtotal de servicio = invoiceSubtotal (labor+mat+partes+otros; sin crédito aún)
     doc.font("Helvetica-Bold");
     doc.text(
@@ -183,22 +190,29 @@ export function generateServicioPdf(data: ServicioReportPayload): Promise<Buffer
     doc.text(
       `${c.pdfTotalLine}  $${data.amountDue.toFixed(2)} USD`,
     );
-    doc.moveDown(0.4);
+    doc.moveDown(0.3);
     doc.font("Helvetica").fontSize(10).fillColor("#0f172a");
     doc.text(
       data.paymentStatus === "card_paid"
         ? c.pdfPaymentStatusPaid
         : c.pdfPaymentStatusNoDue,
     );
-    doc.moveDown(0.5);
+    doc.moveDown(0.35);
     doc.font("Helvetica").fontSize(8).fillColor("#64748b");
-    doc.text(c.depositLegal, { width: 500 });
+    doc.text(c.depositLegal, {
+      width: pageInnerW,
+      lineGap: 1,
+    });
 
     if (data.notes.trim()) {
-      doc.moveDown(0.8);
+      doc.moveDown(0.45);
+      doc.x = margin;
       doc.font("Helvetica-Bold").fontSize(11).fillColor("#0f172a");
       doc.text(c.pdfNotes);
-      doc.font("Helvetica").fontSize(10).text(data.notes, { width: 500 });
+      doc.font("Helvetica").fontSize(10).text(data.notes, {
+        width: pageInnerW,
+        lineGap: 1.5,
+      });
     }
 
     addImagesSection(doc, c.pdfPhotosBefore, data.photosBefore, lang);
