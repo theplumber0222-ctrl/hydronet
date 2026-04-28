@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { get } from "@vercel/blob";
 import type { ChecklistStatus } from "@/lib/servicio-report-types";
 import { generateServicioPdf } from "@/lib/generate-servicio-pdf";
 import { sendServicioReportEmail } from "@/lib/email";
@@ -13,9 +14,11 @@ import { getStripe, isStripeSecretKeyFailure } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { normalizeEmail } from "@/lib/normalize-email";
 import {
+  isBlobConfigured,
   uploadServicioPdf,
   type StoredPhotoRef,
 } from "@/lib/servicio-report-storage";
+import { isSafeServicioBlobPathname } from "@/lib/servicio-photo-view-token";
 
 export const runtime = "nodejs";
 
@@ -50,19 +53,58 @@ const photoRefSchema = z.object({
   size: z.number().int().nonnegative(),
 });
 
-async function fetchPhotoBuffer(url: string): Promise<Buffer | null> {
+/**
+ * Fotos en Blob están en `access: "private"` — un GET anónimo a la URL suele ser 403.
+ * El SDK usa `BLOB_READ_WRITE_TOKEN` y coincide con `/api/admin/servicio-photo-view`.
+ */
+async function fetchServicioPhotoBufferForPdf(
+  ref: z.infer<typeof photoRefSchema>,
+  reportId: string,
+): Promise<Buffer | null> {
+  const pathnameOk =
+    isSafeServicioBlobPathname(ref.pathname) &&
+    ref.pathname.startsWith(`servicio-reports/${reportId}/`);
+  if (!pathnameOk) {
+    console.error(
+      `[servicio-report] rejected photo pathname for report ${reportId}`,
+      ref.pathname,
+    );
+    return null;
+  }
+
+  if (isBlobConfigured()) {
+    try {
+      const result = await get(ref.pathname, {
+        access: "private",
+        useCache: false,
+      });
+      if (!result || result.statusCode !== 200 || !result.stream) {
+        console.error(
+          `[servicio-report] blob get ${result?.statusCode ?? "?"} for`,
+          ref.pathname,
+        );
+        return null;
+      }
+      const ab = await new Response(result.stream).arrayBuffer();
+      return Buffer.from(new Uint8Array(ab));
+    } catch (err) {
+      console.error(`[servicio-report] blob get failed`, ref.pathname, err);
+      return null;
+    }
+  }
+
   try {
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(ref.url, { cache: "no-store" });
     if (!res.ok) {
       console.error(
-        `[servicio-report] photo fetch ${res.status} ${res.statusText} for ${url}`,
+        `[servicio-report] photo fetch ${res.status} ${res.statusText} for ${ref.url}`,
       );
       return null;
     }
     const ab = await res.arrayBuffer();
     return Buffer.from(new Uint8Array(ab));
   } catch (err) {
-    console.error(`[servicio-report] fetch failed for ${url}`, err);
+    console.error(`[servicio-report] fetch failed for ${ref.url}`, err);
     return null;
   }
 }
@@ -223,11 +265,18 @@ export async function POST(req: Request) {
     }
   }
 
-  // Reconstruye Buffers de las fotos para el PDF descargando desde Blob.
-  // Cada URL ya está alojada en Vercel Blob (validado por zod).
+  // Reconstruye Buffers para el PDF (Blob privado → SDK `get`, no fetch anónimo).
   const [photoBuffersBefore, photoBuffersAfter] = await Promise.all([
-    Promise.all(parsed.photosBefore.map((r) => fetchPhotoBuffer(r.url))),
-    Promise.all(parsed.photosAfter.map((r) => fetchPhotoBuffer(r.url))),
+    Promise.all(
+      parsed.photosBefore.map((r) =>
+        fetchServicioPhotoBufferForPdf(r, parsed.reportId),
+      ),
+    ),
+    Promise.all(
+      parsed.photosAfter.map((r) =>
+        fetchServicioPhotoBufferForPdf(r, parsed.reportId),
+      ),
+    ),
   ]);
 
   const payload = {
