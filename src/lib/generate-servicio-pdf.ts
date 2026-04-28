@@ -31,13 +31,19 @@ function addImagesSection(
 ) {
   if (buffers.length === 0) return;
   const c = servicioReportCopy(lang);
+  const left = doc.page.margins.left;
+  const innerW =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
   doc.addPage();
   doc.fontSize(14).fillColor("#0ea5e9").font("Helvetica-Bold").text(title);
   doc.moveDown(0.8);
+  /** Sin esto, PDFKit deja doc.x al final del título y doc.image() ancla mal el bloque fit+center. */
+  doc.x = left;
 
-  const maxW = 480;
+  const maxW = Math.min(480, innerW);
   const maxH = 280;
   for (let i = 0; i < buffers.length; i++) {
+    doc.x = left;
     try {
       doc.image(buffers[i], {
         fit: [maxW, maxH],
